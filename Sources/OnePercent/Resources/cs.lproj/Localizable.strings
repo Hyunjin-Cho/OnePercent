@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "Novou aplikaci se nepodařilo umístit, a proto byla obnovena předchozí aplikace.";
 "error.replaceRecoveryFailed" = "Nahrazení aplikace se nezdařilo a automatické obnovení nebylo možné dokončit. Záloha předchozí aplikace zůstala zachována.\nZáloha: %1$@\nObnovit do: %2$@\nZálohu najděte ve Finderu pomocí „Otevřít složku“ a vraťte ji na místo s původním názvem (vyžaduje oprávnění správce).\n(%3$@)";
 "error.relaunchFailed" = "Nová verze je nainstalovaná, ale aplikace se nemohla znovu otevřít. Otevřete ji prosím sami. (%@)";
+"error.quitCancelled" = "Nová verze se otevřela, ale předchozí kopie aplikace se neukončila. Ukončete ji prosím sami.";
+"error.fileSystem" = "Operace se souborem selhala – %@";
+"error.administratorInstallDisabled" = "Tuto kopii aplikace lze nahradit jen s heslem správce, a proto nebyla nainstalována přímo z aplikace. Stáhněte novou verzi ze stránky vydání a aplikaci nahraďte sami.";
 "archive.unreadable" = "seznam ZIP nelze přečíst";
 "archive.empty" = "archiv je prázdný";
 "archive.tooManyEntries" = "příliš mnoho položek (%1$@, max. %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "kontrola podpisu kódu selhala";
 "verify.notarization" = "kontrola notarizace Apple selhala";
 "verify.notHigher" = "verze není novější než nainstalovaná";
+"verify.buildNotHigher" = "číslo sestavení (CFBundleVersion) není vyšší než nainstalované";
+"verify.buildUnreadable" = "číslo sestavení (CFBundleVersion) nelze přečíst";
 "verify.releaseMismatch" = "stažená verze (%1$@) není ta ohlášená (%2$@)";
 "verify.unknownValue" = "nečitelné";
 "verify.unreadable" = "verzi nelze přečíst";

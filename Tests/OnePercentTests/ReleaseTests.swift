@@ -56,6 +56,11 @@ import Testing
         #expect(asset(release(url: "http://github.com/x.zip")) == nil)
         #expect(asset(release(url: "https://example.com/TestApp_1.1.zip")) == nil)
         #expect(asset(release(size: 600 * 1024 * 1024)) == nil, "over the size limit")
+        // 2026-11-20 (보안 리뷰 P3-8): 다른 저장소의 자산 주소는 받지 않는다(대소문자는 GitHub 처럼 무시).
+        #expect(asset(release(url: "https://github.com/evil/TestApp/releases/download/1.1/TestApp_1.1.zip")) == nil)
+        #expect(asset(release(url: "https://github.com/OWNER/testapp/releases/download/1.1/TestApp_1.1.zip")) != nil)
+        #expect(asset(release(url: "https://objects.githubusercontent.com/owner/TestApp/releases/download/1.1/TestApp_1.1.zip")) == nil,
+                "the asset address itself is always github.com; CDN hosts are only reached by redirect")
         var dotted = config; dotted.assetName = { _ in "../x.zip" }
         let info = try #require(ReleaseDecision.parseRelease(release(assetName: "../x.zip"), allowedHosts: hosts))
         #expect(ReleaseDecision.selectAsset(in: info, configuration: dotted) == nil, "a path is never an asset name")
@@ -64,7 +69,10 @@ import Testing
     @Test func availableOnlyWhenNewerWithAnAsset() throws {
         let newer = try #require(ReleaseDecision.parseRelease(release(tag: "1.1"), allowedHosts: hosts))
         let update = try #require(ReleaseDecision.availableUpdate(currentVersion: "1.0", release: newer, configuration: config))
-        #expect(update.tag == "1.1" && update.version == "1.1")
+        #expect(update.tag == "1.1" && update.version == "1.1" && update.pageURL != nil)
+        let foreignPage = try #require(ReleaseDecision.parseRelease(release(tag: "1.1", page: "https://github.com/evil/x/releases/tag/1.1"), allowedHosts: hosts))
+        #expect(ReleaseDecision.availableUpdate(currentVersion: "1.0", release: foreignPage, configuration: config)?.pageURL == nil,
+                "a release page of another repository is not linked")
         #expect(ReleaseDecision.availableUpdate(currentVersion: "1.1", release: newer, configuration: config) == nil)
         #expect(ReleaseDecision.availableUpdate(currentVersion: "1.2", release: newer, configuration: config) == nil)
         let missing = try #require(ReleaseDecision.parseRelease(release(tag: "1.1", assetName: "other.zip"), allowedHosts: hosts))

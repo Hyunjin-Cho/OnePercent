@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "Yeni uygulama yerine konamadığı için önceki uygulama geri yüklendi.";
 "error.replaceRecoveryFailed" = "Uygulama değiştirilemedi ve otomatik olarak geri de alınamadı. Önceki uygulamanın bir yedeği saklandı.\nYedek: %1$@\nGeri konacağı yer: %2$@\nYedeği bulmak için Finder’da “Klasöre Git”i kullanın ve özgün adıyla yerine geri koyun (yönetici izni gerekir).\n(%3$@)";
 "error.relaunchFailed" = "Yeni sürüm yüklendi ama uygulama yeniden açılamadı. Lütfen kendiniz açın. (%@)";
+"error.quitCancelled" = "Yeni sürüm açıldı ama uygulamanın önceki kopyası kapanmadı. Lütfen onu kendiniz kapatın.";
+"error.fileSystem" = "Bir dosya işlemi başarısız oldu — %@";
+"error.administratorInstallDisabled" = "Uygulamanın bu kopyası yalnızca yönetici parolasıyla değiştirilebildiği için uygulama içinden yüklenmedi. Yeni sürümü yayın sayfasından indirip uygulamayı kendiniz değiştirin.";
 "archive.unreadable" = "ZIP listesi okunamadı";
 "archive.empty" = "arşiv boş";
 "archive.tooManyEntries" = "çok fazla öğe (%1$@, en fazla %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "kod imzası denetimi başarısız";
 "verify.notarization" = "Apple onaylama denetimi başarısız";
 "verify.notHigher" = "sürüm yüklü olandan yeni değil";
+"verify.buildNotHigher" = "yapı numarası (CFBundleVersion) yüklü olandan yüksek değil";
+"verify.buildUnreadable" = "yapı numarası (CFBundleVersion) okunamadı";
 "verify.releaseMismatch" = "indirilen sürüm (%1$@) duyurulan sürüm (%2$@) değil";
 "verify.unknownValue" = "okunamadı";
 "verify.unreadable" = "sürüm okunamadı";

@@ -16,8 +16,10 @@ import Testing
         var now = Date(timeIntervalSince1970: 1_800_000_000)
         var version = "1.0"
         var build: String? = "1"
-        var installed = URL(fileURLWithPath: "/Applications/TestApp.app")
-        var temporary = FileManager.default.temporaryDirectory
+        // 2026-11-20 (리뷰 P3-20): 기본값도 실제 /Applications·$TMPDIR 이 아니라 없는 임시 경로 — noteLaunch 의 정리가 실제 폴더를 훑지 않게.
+        var temporary = FileManager.default.temporaryDirectory.appendingPathComponent("onepercent-harness-\(UUID().uuidString)")
+        lazy var installed = temporary.appendingPathComponent("Applications/TestApp.app")
+        var firstCheckDelay: Duration = .seconds(15)
         var checks = BundleChecks.accepting
         var strategy = UpdateDecision.ReplaceStrategy.userAtomic
         var relaunched: [URL] = []
@@ -30,7 +32,7 @@ import Testing
             let environment = OnePercentUpdater.Environment(
                 currentVersion: { [unowned self] _ in version },
                 currentBuild: { [unowned self] in build },
-                runningBundleURL: { [unowned self] in installed },
+                runningBundleURL: { [unowned self] in self.installed },
                 applicationsDirectory: "/Applications",
                 temporaryDirectory: temporary,
                 checks: checks,
@@ -44,7 +46,8 @@ import Testing
                 relaunch: { [unowned self] url in
                     if let relaunchError { throw relaunchError }
                     relaunched.append(url)
-                })
+                },
+                firstCheckDelay: firstCheckDelay)
             let updater = OnePercentUpdater(configuration: configuration, store: store, session: session,
                                             now: { [unowned self] in now }, gate: gate, environment: environment)
             updater.onUpdateAvailable = { [unowned self] in notices.append($0.tag) }
@@ -62,6 +65,15 @@ import Testing
     }
 
     var apiCount: Int { NetworkStub.count(ReleaseJSON.apiPath) }
+
+    /// Waits for a condition with a limit, so a regression fails instead of hanging. 2026-11-20 (리뷰 P3-22).
+    func waitUntil(_ label: String = "condition", seconds: Double = 5, _ condition: () -> Bool) async {
+        let deadline = Date().addingTimeInterval(seconds)
+        while !condition() {
+            if Date() > deadline { Issue.record("timed out waiting for \(label)"); return }
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+    }
     var keys: OnePercentUpdater.Keys { OnePercentUpdater.Keys("OnePercent.") }
 
     // MARK: - Checking and announcing
@@ -166,7 +178,10 @@ import Testing
         await updater.checkNow(userInitiated: false)
         #expect(updater.lastError == .assetNotReady("1.1") && h.notices.isEmpty)
         #expect(updater.lastCheck == success, "not recorded as a successful check")
-        #expect(updater.latestVersion == "1.1" && updater.phase != .upToDate, "never shown as up to date")
+        #expect(updater.phase != .upToDate, "never shown as up to date")
+        // 2026-11-20 (PR #1 리뷰 P2-4): 설치할 수 없는 버전을 최신 번호로 저장하지 않는다 — 설치 버튼이 남지 않는다.
+        #expect(updater.latestVersion == "1.0" && !updater.presentation.showsInstallButton && !updater.presentation.showsMenuNotice)
+        #expect(!h.make().presentation.showsInstallButton, "nor after a relaunch")
         h.now.addTimeInterval(3600)
         respond("1.1")
         let before = apiCount
@@ -180,12 +195,13 @@ import Testing
         let updater = h.make()
         respond("1.1")
         await updater.checkNow()
-        for body in [try! JSONSerialization.data(withJSONObject: ["tag_name": "2.0", "draft": true]),
-                     try! JSONSerialization.data(withJSONObject: ["tag_name": "2.0", "prerelease": true]),
-                     ReleaseJSON.body(tag: "bad-tag"), Data("{".utf8)] {
+        // 2026-11-20 (리뷰 P3-11): 버전이 아닌 태그는 서버 고장이 아니라 설정 문제로 알린다.
+        for (body, code) in [(try! JSONSerialization.data(withJSONObject: ["tag_name": "2.0", "draft": true]), "malformedResponse"),
+                             (try! JSONSerialization.data(withJSONObject: ["tag_name": "2.0", "prerelease": true]), "malformedResponse"),
+                             (ReleaseJSON.body(tag: "bad-tag"), "badConfiguration"), (Data("{".utf8), "malformedResponse")] {
             NetworkStub.set(ReleaseJSON.apiPath, .init(body: body))
             await updater.checkNow()
-            #expect(updater.lastError == .malformedResponse)
+            #expect(updater.lastError?.code == code)
             #expect(updater.latestVersion == "1.1" && h.notices.count == 1)
         }
         NetworkStub.set(ReleaseJSON.apiPath, .init(body: Data(count: 2 * 1024 * 1024 + 1)))
@@ -227,7 +243,7 @@ import Testing
         let updater = h.make()
         NetworkStub.set(ReleaseJSON.apiPath, .init(body: ReleaseJSON.body(tag: "1.1"), holdAfterChunks: 0))
         let check = Task { await updater.checkNow(userInitiated: false) }
-        while !NetworkStub.isHolding { await Task.yield() }
+        await waitUntil { NetworkStub.isHolding }
         updater.setAutomaticChecksEnabled(false)
         NetworkStub.release()
         await check.value
@@ -242,7 +258,7 @@ import Testing
         let updater = h.make()
         NetworkStub.set(ReleaseJSON.apiPath, .init(body: ReleaseJSON.body(tag: "1.1"), holdAfterChunks: 0))
         let first = Task { await updater.checkNow() }
-        while !NetworkStub.isHolding { await Task.yield() }
+        await waitUntil { NetworkStub.isHolding }
         await updater.checkNow()
         #expect(apiCount == 1)
         NetworkStub.release()
@@ -255,7 +271,7 @@ import Testing
         let updater = h.make()
         NetworkStub.set(ReleaseJSON.apiPath, .init(body: ReleaseJSON.body(tag: "1.1"), holdAfterChunks: 0))
         let pending = Task { await updater.checkNow() }
-        while !NetworkStub.isHolding { await Task.yield() }
+        await waitUntil { NetworkStub.isHolding }
         #expect(updater.suspend())
         NetworkStub.release()
         await pending.value
@@ -347,15 +363,15 @@ import Testing
         await #expect(throws: (any Error).self) { _ = try await receive(limit: 1 << 20, to: file) }
         #expect(!FileManager.default.fileExists(atPath: file.path), "connection lost: partial file removed")
 
-        for address in ["http://api.github.com/t", "https://example.com/t"] {
-            await #expect(throws: OnePercentError.redirectBlocked(address)) { _ = try await receive(URL(string: address)!) }
+        for (address, shown) in [("http://api.github.com/t", "http://api.github.com"), ("https://example.com/t", "https://example.com")] {
+            await #expect(throws: OnePercentError.redirectBlocked(shown)) { _ = try await receive(URL(string: address)!) }
         }
         NetworkStub.set("/target", .init(body: chunk))
         for (target, allowed) in [("https://release-assets.githubusercontent.com/target", true),
                                   ("https://example.com/target", false), ("http://github.com/target", false)] {
             NetworkStub.set("/t", .init(redirect: URL(string: target)!))
             if allowed { #expect(try await receive().data == chunk, "\(target)") }
-            else { await #expect(throws: OnePercentError.redirectBlocked(target)) { _ = try await receive() } }
+            else { await #expect(throws: OnePercentError.redirectBlocked(ReleaseDecision.display(target))) { _ = try await receive() } }
         }
     }
 
@@ -370,7 +386,7 @@ import Testing
             try await UpdateTransport.receive(URLRequest(url: URL(string: "https://api.github.com/t")!), configuration: configuration,
                                               limit: 1 << 20, allowedHosts: OnePercentConfiguration.githubHosts, destination: file)
         }
-        while !NetworkStub.isHolding { await Task.yield() }
+        await waitUntil { NetworkStub.isHolding }
         pending.cancel()
         await #expect(throws: CancellationError.self) { _ = try await pending.value }
         #expect(!FileManager.default.fileExists(atPath: file.path))
@@ -452,7 +468,7 @@ import Testing
             ("HTTP 500", { serve(release, asset: .init(status: 500, body: Data("x".utf8))) }, .httpStatus(500)),
             ("size", { serve(release, size: release.zip.count + 1) }, .sizeMismatch(expected: release.zip.count + 1, actual: release.zip.count)),
             ("digest", { serve(release, digest: String(repeating: "0", count: 64)) }, .digestMismatch),
-            ("redirect", { serve(release, asset: .init(redirect: URL(string: "https://example.com/x.zip")!)) }, .redirectBlocked("https://example.com/x.zip")),
+            ("redirect", { serve(release, asset: .init(redirect: URL(string: "https://example.com/x.zip")!)) }, .redirectBlocked("https://example.com")),
             ("cut", { serve(release, asset: .init(body: release.zip, chunkSize: 1024, failAfterChunks: 2)) }, .network("")),
         ]
         for (label, setUp, expected) in cases {
@@ -522,7 +538,7 @@ import Testing
         let updater = h.make()
         await updater.checkNow()
         let install = Task { await updater.installAvailableUpdate() }
-        while !NetworkStub.isHolding { await Task.yield() }
+        await waitUntil { NetworkStub.isHolding }
         for _ in 0..<200 {
             if case .downloading(let fraction?) = updater.phase, fraction > 0 { break }
             try await Task.sleep(for: .milliseconds(5))
@@ -542,10 +558,22 @@ import Testing
         let release = try makeRelease("admin")
         defer { try? FileManager.default.removeItem(at: release.root) }
         serve(release)
+        // 2026-11-20 오너 결정(A): 기본으로 꺼져 있다 — 내려받기 전에 알리고 아무것도 받지 않는다.
+        let off = harness(release)
+        off.strategy = .adminPrompt
+        let disabled = off.make()
+        await disabled.checkNow()
+        await disabled.installAvailableUpdate()
+        #expect(disabled.lastError == .administratorInstallDisabled && off.adminScripts.isEmpty)
+        #expect(NetworkStub.count(ReleaseJSON.assetPath("1.1")) == 0, "nothing downloaded")
+        if case .available = disabled.phase {} else { Issue.record("the update stays available (the release page link is still useful)") }
+
         let h = harness(release)
         h.strategy = .adminPrompt
         h.adminError = OnePercentError.cancelled
-        let updater = h.make()
+        var allowed = Fixture.configuration()
+        allowed.allowsAdministratorInstall = true
+        let updater = h.make(allowed)
         await updater.checkNow()
         await updater.installAvailableUpdate()
         #expect(updater.lastError == .cancelled, "the user closed the password prompt")
@@ -563,5 +591,152 @@ import Testing
         await second.installAvailableUpdate()
         #expect(second.lastError == .relaunchFailed("test"))
         #expect(Fixture.marker(release.installed) == "new" && second.phase == .idle, "installed; no second install offered")
+        #expect(!second.presentation.showsInstallButton, "2026-11-20 리뷰 P2-5a: the button does not come back either")
+    }
+
+    // MARK: - PR #1 code review follow-ups (2026-11-20)
+
+    /// P1-2: after a relaunch only the stored latest version is known — Install asks GitHub again first, then installs.
+    @Test func installAfterRelaunchAsksAgainFirst() async throws {
+        NetworkStub.reset()
+        let release = try makeRelease("recheck")
+        defer { try? FileManager.default.removeItem(at: release.root) }
+        serve(release)
+        let h = harness(release)
+        await h.make().checkNow(userInitiated: false)          // found 1.1, the user said "later"
+        let updater = h.make()                                  // next launch
+        #expect(updater.phase == .idle && updater.presentation.showsInstallButton && updater.presentation.installRechecksFirst)
+        let before = apiCount
+        await updater.installAvailableUpdate()
+        #expect(apiCount == before + 1, "asked again first")
+        #expect(Fixture.marker(release.installed) == "new" && h.relaunched.count == 1 && updater.lastError == nil)
+
+        // The release was withdrawn meanwhile: nothing is installed, and the button goes away.
+        let goneRelease = try makeRelease("recheck-gone")
+        defer { try? FileManager.default.removeItem(at: goneRelease.root) }
+        let gone = harness(goneRelease)
+        gone.store.set("1.1", forKey: keys.latestVersion)
+        respond("1.0")
+        let stale = gone.make()
+        await stale.installAvailableUpdate()
+        #expect(stale.phase == .upToDate && gone.relaunched.isEmpty && !stale.presentation.showsInstallButton)
+    }
+
+    /// P2-3: cancel during verification stops before the remaining checks.
+    @Test func cancelDuringVerification() async throws {
+        NetworkStub.reset()
+        let release = try makeRelease("cancel-verify")
+        defer { try? FileManager.default.removeItem(at: release.root) }
+        serve(release)
+        let h = harness(release)
+        let log = CallLog()
+        h.checks = BundleChecks(signedByTeam: { _, _ in log.add("team"); Thread.sleep(forTimeInterval: 0.5); return true },
+                                codesignValid: { _, _ in log.add("codesign"); return true },
+                                notarizationAccepted: { _ in log.add("spctl"); return true })
+        let updater = h.make()
+        await updater.checkNow()
+        let install = Task { await updater.installAvailableUpdate() }
+        await waitUntil("team check") { log.all.contains("team") }
+        #expect(updater.phase == .verifying && updater.presentation.showsCancelButton)
+        updater.cancel()
+        await install.value
+        #expect(updater.lastError == .cancelled)
+        #expect(log.all == ["team"], "codesign and spctl never ran: \(log.all)")
+        #expect(Fixture.marker(release.installed) == "old" && leftovers(release).isEmpty)
+        if case .available = updater.phase {} else { Issue.record("still available after cancel") }
+    }
+
+    /// P2-7: once an install has started, suspend() is refused — even before the phase changes.
+    @Test func suspendIsRefusedOnceInstallStarts() async throws {
+        NetworkStub.reset()
+        let release = try makeRelease("suspend-install")
+        defer { try? FileManager.default.removeItem(at: release.root) }
+        serve(release)
+        let h = harness(release)
+        let updater = h.make()
+        await updater.checkNow()
+        var duringGuard: Bool?
+        updater.installGuard = {
+            if duringGuard == nil { duringGuard = updater.suspend() }   // the phase is still .available here
+            return nil
+        }
+        await updater.installAvailableUpdate()
+        #expect(duringGuard == false)
+        #expect(Fixture.marker(release.installed) == "new")
+    }
+
+    /// P2-8: resume() without suspend() leaves a running check alone.
+    @Test func resumeWithoutSuspendChangesNothing() async {
+        NetworkStub.reset()
+        let h = Harness()
+        let updater = h.make()
+        NetworkStub.set(ReleaseJSON.apiPath, .init(body: ReleaseJSON.body(tag: "1.1"), holdAfterChunks: 0))
+        let check = Task { await updater.checkNow() }
+        await waitUntil { NetworkStub.isHolding }
+        updater.resume()
+        NetworkStub.release()
+        await check.value
+        if case .available = updater.phase {} else { Issue.record("stuck: \(updater.phase)") }
+    }
+
+    /// P2-5b: the app refused to quit after the new version opened.
+    @Test func appRefusingToQuit() async throws {
+        NetworkStub.reset()
+        let release = try makeRelease("quit-refused")
+        defer { try? FileManager.default.removeItem(at: release.root) }
+        serve(release)
+        let h = harness(release)
+        h.relaunchError = OnePercentError.quitCancelled
+        let updater = h.make()
+        await updater.checkNow()
+        await updater.installAvailableUpdate()
+        #expect(updater.lastError == .quitCancelled && updater.phase == .idle && updater.installedThisRun == "1.1")
+        #expect(Fixture.marker(release.installed) == "new" && !updater.presentation.showsInstallButton)
+        await updater.checkNow()
+        #expect(updater.phase == .upToDate, "1.1 counts as installed in this run")
+        #expect(updater.suspend(), "nothing is running any more")
+    }
+
+    /// P3-10: stopping right after starting cancels the delayed first check.
+    @Test func stoppingCancelsTheFirstCheck() async throws {
+        NetworkStub.reset()
+        let h = Harness()
+        h.firstCheckDelay = .milliseconds(50)
+        respond("1.1")
+        let updater = h.make()
+        updater.startAutomaticChecks()
+        updater.stopAutomaticChecks()
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(apiCount == 0 && h.notices.isEmpty)
+        updater.startAutomaticChecks()
+        await waitUntil("first check") { h.notices == ["1.1"] }
+        updater.stopAutomaticChecks()
+    }
+
+    /// 2026-11-20 (보안 리뷰 P3-6): 시험 저장소는 앱 코드로만 켠다(UserDefaults 키는 더 없다).
+    @Test func testRepositoryComesFromCode() {
+        var config = Fixture.configuration()
+        #expect(Harness().make(config).repository == "owner/TestApp")
+        config.testRepository = "owner/TestAppStaging"
+        #expect(Harness().make(config).repository == "owner/TestAppStaging", "debug build of the package")
+        config.testRepository = "bad/../repo"
+        #expect(!config.problems.isEmpty)
+        let h = Harness()
+        h.store.set(true, forKey: "OnePercent.allowTestRepository")
+        h.store.set("evil/repo", forKey: "OnePercent.testRepository")
+        #expect(h.make().repository == "owner/TestApp", "old defaults keys do nothing")
+    }
+
+    @Test func secondNoteLaunchAndBadVersion() {
+        let h = Harness()
+        h.version = "1.1"
+        h.store.set("1.0", forKey: keys.lastLaunchedVersion)
+        let updater = h.make()
+        #expect(updater.noteLaunch() == "1.1")
+        #expect(updater.noteLaunch() == "1.1" && updater.justUpdatedTo == "1.1", "a second call does not clear it")
+        let beta = Harness()
+        beta.version = "1.0-beta"
+        let broken = beta.make()
+        #expect(broken.noteLaunch() == nil && broken.lastError?.code == "badConfiguration", "a running version the scheme cannot read is reported")
     }
 }

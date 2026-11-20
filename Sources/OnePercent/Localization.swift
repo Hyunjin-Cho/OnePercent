@@ -20,7 +20,7 @@ enum L10n {
             return String(format: format, locale: Locale(identifier: language), arguments: arguments.map { $0 as NSString })
         }
 
-        /// A byte count in the table's language, for example "200 MB".
+        /// A byte count, for example "200 MB" (formatted by the system's own locale — `ByteCountFormatter` has no locale setting).
         func bytes(_ count: Int) -> String {
             let formatter = ByteCountFormatter()
             formatter.countStyle = .file
@@ -36,9 +36,11 @@ enum L10n {
             return formatter.string(from: NSNumber(value: min(max(fraction, 0), 1))) ?? "\(Int(fraction * 100))%"
         }
 
-        /// A date without the time, long style, in the table's language.
+        /// A date without the time, long style, in the table's language and the user's region.
         func date(_ date: Date) -> String {
-            date.formatted(Date.FormatStyle(date: .long, time: .omitted).locale(Locale(identifier: language)))
+            let region = Locale.current.region?.identifier
+            let identifier = language.contains("-") || region == nil ? language : "\(language)_\(region!)"
+            return date.formatted(Date.FormatStyle(date: .long, time: .omitted).locale(Locale(identifier: identifier)))
         }
     }
 
@@ -63,10 +65,8 @@ enum L10n {
         return Table(language: "en", bundle: path.flatMap(Bundle.init(path:)))
     }()
 
-    /// The table matching the app's own language.
-    static var current: Table {
-        table(Bundle.main.preferredLocalizations.first ?? Locale.preferredLanguages.first ?? "en")
-    }
+    /// The table matching the app's own language (fixed for the life of the process, like the app's own language).
+    static let current: Table = table(Bundle.main.preferredLocalizations.first ?? Locale.preferredLanguages.first ?? "en")
 
     /// Korean picks 로/으로 by the sound of the last character: a final consonant other than ㄹ takes 으로.
     /// Digits are read as Sino-Korean numbers — 0(영)·3(삼)·6(육) end in a consonant; 1(일)·7(칠)·8(팔) end in ㄹ and take 로.

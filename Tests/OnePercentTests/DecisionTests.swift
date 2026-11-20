@@ -35,7 +35,7 @@ import Testing
     @Test func storedKeysUseThePrefix() {
         var c = config; c.defaultsKeyPrefix = "pomolight.update."
         let keys = OnePercentUpdater.storedKeys(configuration: c)
-        #expect(keys.count == 7 && keys.allSatisfy { $0.hasPrefix("pomolight.update.") })
+        #expect(keys.count == 5 && keys.allSatisfy { $0.hasPrefix("pomolight.update.") })
     }
 
     // MARK: - Schedule
@@ -62,9 +62,10 @@ import Testing
             UpdateDecision.shouldCheckNow(schedule: schedule, automaticChecksEnabled: true, lastCheck: now.addingTimeInterval(-ago), now: now, forced: false)
         }
         #expect(!due(.daily, ago: 23 * 3600) && due(.daily, ago: 24 * 3600))
+        #expect(due(.daily, ago: 24 * 3600 - 120), "a few minutes of slack, so an hourly tick does not push it to 25 hours")
         #expect(!due(.weekly, ago: 6 * 86400) && due(.weekly, ago: 7 * 86400))
-        #expect(!due(.every(60), ago: 59 * 60), "at least one hour, whatever was asked")
-        #expect(due(.every(60), ago: 3600))
+        #expect(!due(.every(60), ago: 50 * 60), "at least one hour, whatever was asked")
+        #expect(due(.every(60), ago: 3600) && due(.every(3600), ago: 3600 - 120))
         #expect(!due(.manual, ago: 365 * 86400), "manual never checks in the background")
         #expect(UpdateDecision.shouldCheckNow(schedule: .manual, automaticChecksEnabled: true, lastCheck: nil, now: now, forced: true))
     }
@@ -95,6 +96,15 @@ import Testing
         #expect(!increase("1.0", "1", nil, "2"), "unreadable new version")
         #expect(increase("1.0", "1.9", "1.1", "1.10"), "dotted build numbers compare as numbers")
         #expect(increase("1.0", nil, "1.1", nil, Fixture.configuration(requireBuildIncrease: false)), "build check can be turned off")
+        #expect(increase("1.0", "202611191200", "1.1", "202611201530"), "date-time build numbers (12 digits)")
+        func problem(_ cv: String, _ cb: String?, _ nv: String?, _ nb: String?) -> VerificationFailure? {
+            UpdateDecision.increaseProblem(currentVersion: cv, currentBuild: cb, newVersion: nv, newBuild: nb, configuration: config)
+        }
+        #expect(problem("1.0", "1", "1.1", "2") == nil)
+        #expect(problem("1.1", "1", "1.0", "2") == .versionNotHigher)
+        #expect(problem("1.0", "5", "1.1", "5") == .buildNotHigher, "forgot to raise CFBundleVersion — its own reason")
+        #expect(problem("1.0", "1", "1.1", "2b") == .buildUnreadable)
+        #expect(problem("1.0", nil, "1.1", "2") == .buildUnreadable)
     }
 
     /// 2026-11-13 (하늘키보드 #226 F-1): 받은 앱은 안내한 바로 그 버전이어야 한다.
@@ -168,10 +178,16 @@ import Testing
     }
 
     @Test func replaceStrategy() {
-        #expect(UpdateDecision.replaceStrategy(destinationOwnerUID: 501, currentUID: 501, parentWritable: true) == .userAtomic)
-        #expect(UpdateDecision.replaceStrategy(destinationOwnerUID: 0, currentUID: 501, parentWritable: true) == .adminPrompt)
-        #expect(UpdateDecision.replaceStrategy(destinationOwnerUID: 501, currentUID: 501, parentWritable: false) == .adminPrompt)
-        #expect(UpdateDecision.replaceStrategy(destinationOwnerUID: nil, currentUID: 501, parentWritable: true) == .adminPrompt)
+        func strategy(_ owner: UInt32?, parent: UInt32?, writable: Bool) -> UpdateDecision.ReplaceStrategy {
+            UpdateDecision.replaceStrategy(destinationOwnerUID: owner, parentOwnerUID: parent, currentUID: 501, parentWritable: writable)
+        }
+        #expect(strategy(501, parent: 0, writable: true) == .userAtomic, "/Applications as an admin user")
+        #expect(strategy(0, parent: 0, writable: true) == .adminPrompt, "installed by sudo")
+        #expect(strategy(501, parent: 0, writable: false) == .adminPrompt, "standard account")
+        #expect(strategy(nil, parent: 0, writable: true) == .adminPrompt)
+        // 2026-11-20 (보안 리뷰 P1-1): 내 폴더 안이면 쓰기 권한을 막아 둬도 관리자 경로로 가지 않는다.
+        #expect(strategy(501, parent: 501, writable: false) == .userAtomic)
+        #expect(strategy(0, parent: 501, writable: true) == .userAtomic)
     }
 
     /// 2026-11-20: 모든 서명 검사가 같은 요구사항 하나를 쓴다 — Apple 사슬, 번들 ID, Developer ID 표시 두 개, 팀.

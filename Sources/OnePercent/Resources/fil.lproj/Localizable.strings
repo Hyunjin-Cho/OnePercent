@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "Hindi mailagay ang bagong app kaya ibinalik ang dating app.";
 "error.replaceRecoveryFailed" = "Nabigo ang pagpapalit ng app at hindi rin ito maibalik nang awtomatiko. Itinabi ang backup ng dating app.\nBackup: %1$@\nIbalik sa: %2$@\nGamitin ang “Go to Folder” sa Finder para hanapin ang backup at ibalik ito sa dating lugar gamit ang orihinal na pangalan (kailangan ng administrator).\n(%3$@)";
 "error.relaunchFailed" = "Na-install na ang bagong bersyon pero hindi muling mabuksan ang app. Pakibuksan ito nang manu-mano. (%@)";
+"error.quitCancelled" = "Nabuksan na ang bagong bersyon, pero hindi nag-quit ang dating kopya ng app. Paki-quit ito nang manu-mano.";
+"error.fileSystem" = "Nabigo ang isang operasyon sa file — %@";
+"error.administratorInstallDisabled" = "Mapapalitan lang ang kopyang ito ng app gamit ang password ng administrator, kaya hindi ito na-install mula sa app. I-download ang bagong bersyon mula sa page ng release at palitan ang app nang manu-mano.";
 "archive.unreadable" = "hindi mabasa ang listahan ng ZIP";
 "archive.empty" = "walang laman ang archive";
 "archive.tooManyEntries" = "masyadong maraming item (%1$@, max %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "nabigo ang pagsusuri ng code signature";
 "verify.notarization" = "nabigo ang pagsusuri ng notarization ng Apple";
 "verify.notHigher" = "hindi mas bago ang bersyon kaysa sa naka-install";
+"verify.buildNotHigher" = "hindi mas mataas ang build number (CFBundleVersion) kaysa sa naka-install";
+"verify.buildUnreadable" = "hindi mabasa ang build number (CFBundleVersion)";
 "verify.releaseMismatch" = "ang na-download na bersyon (%1$@) ay hindi ang inanunsyo (%2$@)";
 "verify.unknownValue" = "hindi mabasa";
 "verify.unreadable" = "hindi mabasa ang bersyon";

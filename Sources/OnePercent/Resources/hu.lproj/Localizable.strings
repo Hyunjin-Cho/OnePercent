@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "Az új appot nem sikerült a helyére tenni, ezért az előző app vissza lett állítva.";
 "error.replaceRecoveryFailed" = "Az app cseréje nem sikerült, és az automatikus visszaállítás sem fejeződött be. Az előző appról biztonsági másolat maradt.\nBiztonsági másolat: %1$@\nVisszaállítás ide: %2$@\nA Finder „Ugrás a mappához” parancsával keresse meg a másolatot, és tegye vissza a helyére az eredeti nevén (rendszergazdai jog szükséges).\n(%3$@)";
 "error.relaunchFailed" = "Az új verzió telepítve lett, de az app nem tudott újra megnyílni. Nyissa meg kézzel. (%@)";
+"error.quitCancelled" = "Az új verzió megnyílt, de az app korábbi példánya nem lépett ki. Léptesse ki kézzel.";
+"error.fileSystem" = "Egy fájlművelet sikertelen – %@";
+"error.administratorInstallDisabled" = "Az app ezen példánya csak rendszergazdai jelszóval cserélhető, ezért nem lett az appból telepítve. Töltse le az új verziót a kiadás oldaláról, és cserélje le az appot kézzel.";
 "archive.unreadable" = "a ZIP-lista nem olvasható";
 "archive.empty" = "az archívum üres";
 "archive.tooManyEntries" = "túl sok elem (%1$@, max. %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "a kódaláírás ellenőrzése sikertelen";
 "verify.notarization" = "az Apple-hitelesítés ellenőrzése sikertelen";
 "verify.notHigher" = "a verzió nem újabb a telepítettnél";
+"verify.buildNotHigher" = "a buildszám (CFBundleVersion) nem nagyobb a telepítettnél";
+"verify.buildUnreadable" = "a buildszám (CFBundleVersion) nem olvasható";
 "verify.releaseMismatch" = "a letöltött verzió (%1$@) nem a bejelentett (%2$@)";
 "verify.unknownValue" = "nem olvasható";
 "verify.unreadable" = "a verzió nem olvasható";

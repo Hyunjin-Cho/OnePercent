@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "The new app couldn’t be put in place, so the previous app was restored.";
 "error.replaceRecoveryFailed" = "Replacing the app failed, and it couldn’t be restored automatically. A backup of the previous app was kept.\nBackup: %1$@\nRestore to: %2$@\nUse Finder’s “Go to Folder” to find the backup and move it back under its original name (requires an administrator).\n(%3$@)";
 "error.relaunchFailed" = "The new version is installed, but the app couldn’t reopen. Please open it yourself. (%@)";
+"error.quitCancelled" = "The new version opened, but the previous copy of the app didn’t quit. Please quit it yourself.";
+"error.fileSystem" = "A file operation failed — %@";
+"error.administratorInstallDisabled" = "This copy of the app can only be replaced with an administrator password, so it wasn’t installed in-app. Download the new version from the release page and replace the app yourself.";
 "archive.unreadable" = "the ZIP listing couldn’t be read";
 "archive.empty" = "the archive is empty";
 "archive.tooManyEntries" = "too many entries (%1$@, max %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "the code signature check failed";
 "verify.notarization" = "the Apple notarization check failed";
 "verify.notHigher" = "the version isn’t higher than the installed one";
+"verify.buildNotHigher" = "the build number (CFBundleVersion) isn’t higher than the installed one";
+"verify.buildUnreadable" = "the build number (CFBundleVersion) couldn’t be read";
 "verify.releaseMismatch" = "the downloaded version (%1$@) isn’t the announced one (%2$@)";
 "verify.unknownValue" = "unreadable";
 "verify.unreadable" = "the version couldn’t be read";

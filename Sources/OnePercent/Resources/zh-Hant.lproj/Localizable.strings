@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "無法放置新的 App，已將原本的 App 復原到原位置。";
 "error.replaceRecoveryFailed" = "替換 App 失敗，也無法自動復原。原本 App 的備份已保留。\n備份：%1$@\n復原到：%2$@\n請使用 Finder 的「前往檔案夾」找到備份，並以原本的名稱放回原位置（需要管理者權限）。\n（%3$@）";
 "error.relaunchFailed" = "新版本已安裝，但無法重新開啟 App。請手動開啟 App。（%@）";
+"error.quitCancelled" = "新版本已開啟，但先前的 App 沒有結束。請手動結束先前的 App。";
+"error.fileSystem" = "檔案作業失敗 — %@";
+"error.administratorInstallDisabled" = "此位置的 App 需要管理者密碼才能替換，因此沒有在 App 內安裝。請從發佈頁面下載新版本並手動替換。";
 "archive.unreadable" = "無法讀取 ZIP 清單";
 "archive.empty" = "壓縮檔是空的";
 "archive.tooManyEntries" = "項目過多（%1$@ 個，最多 %2$@ 個）";
@@ -68,6 +71,8 @@
 "verify.codesign" = "程式碼簽署檢查失敗";
 "verify.notarization" = "Apple 公證檢查失敗";
 "verify.notHigher" = "版本沒有比目前版本新";
+"verify.buildNotHigher" = "建置編號（CFBundleVersion）沒有比目前的高";
+"verify.buildUnreadable" = "無法讀取建置編號（CFBundleVersion）";
 "verify.releaseMismatch" = "下載的 App 版本（%1$@）與通知的新版本（%2$@）不同";
 "verify.unknownValue" = "無法讀取";
 "verify.unreadable" = "無法讀取版本資訊";

@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "新しいアプリを配置できなかったため、元のアプリを元の場所に戻しました。";
 "error.replaceRecoveryFailed" = "アプリの置き換えに失敗し、自動での復元も完了できませんでした。元のアプリのバックアップは残してあります。\nバックアップ: %1$@\n戻す場所: %2$@\nFinder の「フォルダへ移動」でバックアップを見つけ、元の場所と名前に戻してください（管理者権限が必要です）。\n（%3$@）";
 "error.relaunchFailed" = "新しいバージョンはインストールされましたが、アプリを再び開けませんでした。アプリを手動で開いてください。（%@）";
+"error.quitCancelled" = "新しいバージョンは開きましたが、以前のアプリが終了しませんでした。以前のアプリを手動で終了してください。";
+"error.fileSystem" = "ファイル操作に失敗しました — %@";
+"error.administratorInstallDisabled" = "この場所のアプリは管理者パスワードがないと置き換えられないため、アプリ内ではインストールしませんでした。リリースページから新しいバージョンをダウンロードし、手動で置き換えてください。";
 "archive.unreadable" = "ZIP の一覧を読み取れない";
 "archive.empty" = "圧縮ファイルが空";
 "archive.tooManyEntries" = "項目が多すぎる（%1$@ 個、最大 %2$@ 個）";
@@ -68,6 +71,8 @@
 "verify.codesign" = "コード署名の確認に失敗";
 "verify.notarization" = "Apple の公証の確認に失敗";
 "verify.notHigher" = "バージョンが現在より新しくない";
+"verify.buildNotHigher" = "ビルド番号（CFBundleVersion）が現在より大きくない";
+"verify.buildUnreadable" = "ビルド番号（CFBundleVersion）を読み取れない";
 "verify.releaseMismatch" = "ダウンロードしたアプリのバージョン（%1$@）が案内した新しいバージョン（%2$@）と違う";
 "verify.unknownValue" = "読み取れない";
 "verify.unreadable" = "バージョン情報を読み取れない";

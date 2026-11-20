@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "Den nye appen kunne ikke settes på plass, så den forrige appen ble gjenopprettet.";
 "error.replaceRecoveryFailed" = "Erstatningen av appen mislyktes, og den kunne ikke gjenopprettes automatisk. En sikkerhetskopi av den forrige appen er tatt vare på.\nSikkerhetskopi: %1$@\nGjenopprett til: %2$@\nBruk «Gå til mappe» i Finder for å finne sikkerhetskopien, og legg den tilbake med det opprinnelige navnet (krever administrator).\n(%3$@)";
 "error.relaunchFailed" = "Den nye versjonen er installert, men appen kunne ikke åpnes igjen. Åpne den selv. (%@)";
+"error.quitCancelled" = "Den nye versjonen ble åpnet, men den forrige kopien av appen ble ikke avsluttet. Avslutt den selv.";
+"error.fileSystem" = "En filoperasjon mislyktes – %@";
+"error.administratorInstallDisabled" = "Denne kopien av appen kan bare erstattes med et administratorpassord, så den ble ikke installert fra appen. Last ned den nye versjonen fra utgivelsessiden og erstatt appen selv.";
 "archive.unreadable" = "ZIP-listen kunne ikke leses";
 "archive.empty" = "arkivet er tomt";
 "archive.tooManyEntries" = "for mange objekter (%1$@, maks. %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "kontrollen av kodesignaturen mislyktes";
 "verify.notarization" = "kontrollen av Apples notarisering mislyktes";
 "verify.notHigher" = "versjonen er ikke høyere enn den installerte";
+"verify.buildNotHigher" = "byggnummeret (CFBundleVersion) er ikke høyere enn det installerte";
+"verify.buildUnreadable" = "byggnummeret (CFBundleVersion) kunne ikke leses";
 "verify.releaseMismatch" = "den nedlastede versjonen (%1$@) er ikke den varslede (%2$@)";
 "verify.unknownValue" = "uleselig";
 "verify.unreadable" = "versjonen kunne ikke leses";

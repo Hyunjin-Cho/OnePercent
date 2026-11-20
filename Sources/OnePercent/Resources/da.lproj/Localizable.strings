@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "Den nye app kunne ikke sættes på plads, så den tidligere app blev gendannet.";
 "error.replaceRecoveryFailed" = "Udskiftningen af appen mislykkedes, og den kunne ikke gendannes automatisk. En sikkerhedskopi af den tidligere app er gemt.\nSikkerhedskopi: %1$@\nGendan til: %2$@\nBrug “Gå til mappe” i Finder til at finde sikkerhedskopien, og læg den tilbage med det oprindelige navn (kræver administrator).\n(%3$@)";
 "error.relaunchFailed" = "Den nye version er installeret, men appen kunne ikke åbne igen. Åbn den selv. (%@)";
+"error.quitCancelled" = "Den nye version blev åbnet, men den tidligere kopi af appen blev ikke afsluttet. Afslut den selv.";
+"error.fileSystem" = "En filhandling mislykkedes – %@";
+"error.administratorInstallDisabled" = "Denne kopi af appen kan kun erstattes med en administratoradgangskode, så den blev ikke installeret fra appen. Hent den nye version fra udgivelsessiden, og erstat appen selv.";
 "archive.unreadable" = "ZIP-listen kunne ikke læses";
 "archive.empty" = "arkivet er tomt";
 "archive.tooManyEntries" = "for mange emner (%1$@, maks. %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "tjekket af kodesignaturen mislykkedes";
 "verify.notarization" = "tjekket af Apples notarisering mislykkedes";
 "verify.notHigher" = "versionen er ikke nyere end den installerede";
+"verify.buildNotHigher" = "buildnummeret (CFBundleVersion) er ikke højere end det installerede";
+"verify.buildUnreadable" = "buildnummeret (CFBundleVersion) kunne ikke læses";
 "verify.releaseMismatch" = "den hentede version (%1$@) er ikke den annoncerede (%2$@)";
 "verify.unknownValue" = "ulæselig";
 "verify.unreadable" = "versionen kunne ikke læses";

@@ -63,7 +63,7 @@ final class UpdateTransport: NSObject, URLSessionDataDelegate, @unchecked Sendab
         self.continuation = continuation
         if cancelled { finish(.failure(CancellationError())); return }
         guard limit > 0, let url = request.url, ReleaseDecision.isAllowedURL(url, hosts: allowedHosts) else {
-            finish(.failure(OnePercentError.redirectBlocked(request.url?.absoluteString ?? "?")))
+            finish(.failure(OnePercentError.redirectBlocked(ReleaseDecision.display(request.url?.absoluteString))))
             return
         }
         if let destination {
@@ -131,7 +131,7 @@ final class UpdateTransport: NSObject, URLSessionDataDelegate, @unchecked Sendab
                     completionHandler: @escaping (URLRequest?) -> Void) {
         guard continuation != nil, let url = request.url, ReleaseDecision.isAllowedURL(url, hosts: allowedHosts) else {
             completionHandler(nil)
-            finish(.failure(OnePercentError.redirectBlocked(request.url?.absoluteString ?? "?")))
+            finish(.failure(OnePercentError.redirectBlocked(ReleaseDecision.display(request.url?.absoluteString))))
             return
         }
         completionHandler(request)

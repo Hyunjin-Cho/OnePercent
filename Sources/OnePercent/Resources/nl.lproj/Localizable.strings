@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "De nieuwe app kon niet worden geplaatst, dus de vorige app is teruggezet.";
 "error.replaceRecoveryFailed" = "Het vervangen van de app is mislukt en kon niet automatisch worden hersteld. Er is een reservekopie van de vorige app bewaard.\nReservekopie: %1$@\nTerugzetten naar: %2$@\nGebruik ‘Ga naar map’ in de Finder om de reservekopie te vinden en zet hem terug onder zijn oorspronkelijke naam (beheerdersrechten nodig).\n(%3$@)";
 "error.relaunchFailed" = "De nieuwe versie is geïnstalleerd, maar de app kon niet opnieuw openen. Open hem zelf. (%@)";
+"error.quitCancelled" = "De nieuwe versie is geopend, maar de vorige kopie van de app is niet gestopt. Stop die zelf.";
+"error.fileSystem" = "Een bestandsbewerking is mislukt — %@";
+"error.administratorInstallDisabled" = "Deze kopie van de app kan alleen met een beheerderswachtwoord worden vervangen en is daarom niet vanuit de app geïnstalleerd. Download de nieuwe versie van de releasepagina en vervang de app zelf.";
 "archive.unreadable" = "de ZIP-lijst kon niet worden gelezen";
 "archive.empty" = "het archief is leeg";
 "archive.tooManyEntries" = "te veel onderdelen (%1$@, max. %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "de controle van de codehandtekening is mislukt";
 "verify.notarization" = "de controle van de Apple-notarisatie is mislukt";
 "verify.notHigher" = "de versie is niet hoger dan de geïnstalleerde";
+"verify.buildNotHigher" = "het buildnummer (CFBundleVersion) is niet hoger dan het geïnstalleerde";
+"verify.buildUnreadable" = "het buildnummer (CFBundleVersion) kon niet worden gelezen";
 "verify.releaseMismatch" = "de gedownloade versie (%1$@) is niet de aangekondigde (%2$@)";
 "verify.unknownValue" = "onleesbaar";
 "verify.unreadable" = "de versie kon niet worden gelezen";

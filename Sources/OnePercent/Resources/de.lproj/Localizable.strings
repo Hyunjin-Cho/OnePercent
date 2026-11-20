@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "Die neue App konnte nicht abgelegt werden, daher wurde die bisherige App wiederhergestellt.";
 "error.replaceRecoveryFailed" = "Das Ersetzen der App ist fehlgeschlagen und konnte nicht automatisch rückgängig gemacht werden. Eine Sicherung der bisherigen App wurde behalten.\nSicherung: %1$@\nWiederherstellen nach: %2$@\nSuche die Sicherung im Finder mit „Gehe zum Ordner“ und lege sie unter ihrem ursprünglichen Namen zurück (Administratorrechte nötig).\n(%3$@)";
 "error.relaunchFailed" = "Die neue Version ist installiert, aber die App konnte sich nicht wieder öffnen. Bitte öffne sie selbst. (%@)";
+"error.quitCancelled" = "Die neue Version wurde geöffnet, aber die bisherige App wurde nicht beendet. Bitte beende sie selbst.";
+"error.fileSystem" = "Ein Dateivorgang ist fehlgeschlagen – %@";
+"error.administratorInstallDisabled" = "Diese App kann hier nur mit einem Administratorpasswort ersetzt werden und wurde deshalb nicht in der App installiert. Lade die neue Version von der Release-Seite und ersetze die App selbst.";
 "archive.unreadable" = "die ZIP-Liste konnte nicht gelesen werden";
 "archive.empty" = "das Archiv ist leer";
 "archive.tooManyEntries" = "zu viele Einträge (%1$@, max. %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "die Prüfung der Codesignatur ist fehlgeschlagen";
 "verify.notarization" = "die Prüfung der Apple-Beglaubigung ist fehlgeschlagen";
 "verify.notHigher" = "die Version ist nicht höher als die installierte";
+"verify.buildNotHigher" = "die Build-Nummer (CFBundleVersion) ist nicht höher als die installierte";
+"verify.buildUnreadable" = "die Build-Nummer (CFBundleVersion) konnte nicht gelesen werden";
 "verify.releaseMismatch" = "die geladene Version (%1$@) ist nicht die angekündigte (%2$@)";
 "verify.unknownValue" = "nicht lesbar";
 "verify.unreadable" = "die Version konnte nicht gelesen werden";

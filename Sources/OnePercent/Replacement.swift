@@ -9,10 +9,14 @@ enum UpdateReplacement {
     static func stagingPrefix(for destination: URL) -> String { ".\(destination.lastPathComponent).onepercent-" }
 
     static func strategy(for destination: URL) -> UpdateDecision.ReplaceStrategy {
-        let attrs = try? FileManager.default.attributesOfItem(atPath: destination.path)
-        let owner = (attrs?[.ownerAccountID] as? NSNumber)?.uint32Value
-        let parentWritable = FileManager.default.isWritableFile(atPath: destination.deletingLastPathComponent().path)
-        return UpdateDecision.replaceStrategy(destinationOwnerUID: owner, currentUID: getuid(), parentWritable: parentWritable)
+        var info = stat()
+        let owner = lstat(destination.path, &info) == 0 ? info.st_uid : nil
+        let parentPath = destination.deletingLastPathComponent().path
+        var parentInfo = stat()
+        let parentOwner = lstat(parentPath, &parentInfo) == 0 ? parentInfo.st_uid : nil
+        let parentWritable = FileManager.default.isWritableFile(atPath: parentPath)
+        return UpdateDecision.replaceStrategy(destinationOwnerUID: owner, parentOwnerUID: parentOwner,
+                                              currentUID: getuid(), parentWritable: parentWritable)
     }
 
     /// User-owned install: copy to a staging folder on the same volume → re-check the copy → swap with `replaceItemAt`.
@@ -50,18 +54,22 @@ enum UpdateReplacement {
     /// Removes leftovers of an update that was interrupted (force quit, power loss): user-path staging copies next to
     /// the installed app, and this app's work folders in the temporary directory. Only items owned by this user.
     /// 2026-11-20 (Fable 리뷰): 하늘키보드는 강제 종료 때 응용 프로그램 폴더 옆에 숨은 사본(약 80MB)이 남았다.
+    /// 2026-11-20 (보안 리뷰 P3-5): 10분 넘게 손대지 않은 것만 — 다른 인스턴스가 지금 하고 있는 업데이트를 지우지 않게.
     @discardableResult
-    static func removeLeftovers(installedApp: URL, workPrefix: String, temporaryDirectory: URL = FileManager.default.temporaryDirectory) -> Int {
+    static func removeLeftovers(installedApp: URL, workPrefix: String, temporaryDirectory: URL = FileManager.default.temporaryDirectory,
+                                olderThan minimumAge: TimeInterval = 10 * 60, now: Date = Date()) -> Int {
         let fm = FileManager.default
         var removed = 0
         func sweep(_ folder: URL, prefix: String) {
             guard let names = try? fm.contentsOfDirectory(atPath: folder.path) else { return }
-            for name in names where name.hasPrefix(prefix) {
+            // 2026-11-20 (리뷰): 접두어 뒤가 UUID 일 때만 — `com.x.app` 의 정리가 `com.x.app-helper` 의 진행 중 작업 폴더를 지우지 않게.
+            for name in names where name.hasPrefix(prefix) && UUID(uuidString: String(name.dropFirst(prefix.count))) != nil {
                 let url = folder.appendingPathComponent(name)
                 // lstat: 링크는 건드리지 않고, 이 사용자 소유의 폴더·파일만 지운다(리서치 P3).
                 var info = stat()
                 guard lstat(url.path, &info) == 0, info.st_uid == getuid(),
-                      info.st_mode & S_IFMT == S_IFDIR || info.st_mode & S_IFMT == S_IFREG else { continue }
+                      info.st_mode & S_IFMT == S_IFDIR || info.st_mode & S_IFMT == S_IFREG,
+                      now.timeIntervalSince1970 - Double(info.st_mtimespec.tv_sec) >= minimumAge else { continue }
                 if (try? fm.removeItem(at: url)) != nil { removed += 1 }
             }
         }
@@ -85,6 +93,8 @@ struct AdminReplacementScript {
         var move = "/bin/mv"
         var remove = "/bin/rm"
         var codesign = "/usr/bin/codesign"
+        /// The uid that must own the installed app's folder. Always root in the product; tests (not root) use their own uid.
+        var protectedOwner: UInt32 = 0
     }
 
     /// Exit codes the script uses. Anything else is a generic failure.
@@ -93,6 +103,10 @@ struct AdminReplacementScript {
         case stagingUnsafe = 78
         case placeFailedRestored = 79
         case placeAndRestoreFailed = 80
+        /// The item moved aside was not the one checked a moment before (a swap during the move).
+        case backupMismatch = 81
+        /// The installed app's folder is not protected, or the installed item is not this app.
+        case destinationUnsafe = 82
     }
 
     let source: URL
@@ -151,8 +165,21 @@ struct AdminReplacementScript {
             printf '%s\\n' 'onepercent: staging-unsafe' >&2
             exit \(Exit.stagingUnsafe.rawValue)
         }
+        unsafe() {
+            cleanup
+            printf '%s\\n' 'onepercent: destination-unsafe' >&2
+            exit \(Exit.destinationUnsafe.rawValue)
+        }
         \(linkChecks)
         \(stagingLinkChecks)
+        # 2026-11-20 (PR #1 보안 리뷰 P1-1): 설치 위치의 부모가 root 소유이고 다른 사용자가 쓸 수 없을 때만 root 로 손댄다.
+        # (그룹 쓰기는 /Applications 의 기본값 root:admin 775 라 허용 — 그 대신 아래 mv -h·파일 번호·옛 앱 신원 확인으로 막는다.)
+        pinfo="$(/usr/bin/stat -f '%u:%Lp' "$parent")" || unsafe
+        [ "${pinfo%%:*}" = \(commands.protectedOwner) ] || unsafe
+        [ "$(( 0${pinfo##*:} & 002 ))" -eq 0 ] || unsafe
+        # 지금 그 자리에 있는 것이 이 앱인가 — 남의 폴더를 이 앱으로 알고 옮기거나 지우지 않게.
+        [ -d "$destination" ] && [ ! -L "$destination" ] || unsafe
+        [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$destination/Contents/Info.plist")" = \(Self.shellQuote(identity.bundleID)) ] || unsafe
         # staging 의 부모는 root(또는 이 실행 계정) 소유이고, 끈적이 비트가 있거나 그룹·다른 사용자가 쓸 수 없어야 한다.
         [ -d "$sparent" ] || refuse
         sowner="$(/usr/bin/stat -f %u "$sparent")" || refuse
@@ -176,29 +203,39 @@ struct AdminReplacementScript {
         [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$info")" = \(Self.shellQuote(identity.version)) ] || reject
         [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$info")" = \(Self.shellQuote(identity.build)) ] || reject
         \(codesign) --verify --deep --strict --all-architectures \(Self.shellQuote("-R=" + requirement)) "$staged" || reject
-        owner="$(/usr/bin/stat -f '%u:%g' "$destination")" || reject
+        # 2026-11-20 (보안 리뷰 P1-1): 소유자를 바꿔치기할 수 있는 옛 번들에서 읽지 않는다 — 이 스크립트를 실행하는 계정(관리자 경로에선 root:wheel).
+        owner="$(/usr/bin/id -u):$(/usr/bin/id -g)" || reject
         /bin/chmod -R u-s,g-s,go-w "$staged" || reject
         /bin/chmod -RN "$staged" || reject
         /usr/sbin/chown -hR "$owner" "$staged" || reject
         previous_id="$(/usr/bin/stat -f '%i:%d' "$destination")" || reject
         staged_id="$(/usr/bin/stat -f '%i:%d' "$staged")" || reject
-        if ! \(move) "$destination" "$backup"; then
+        # mv -h: 대상이 폴더를 가리키는 링크여도 따라 들어가지 않고 그 이름으로 바꾼다(보안 리뷰 P1-1, 이 macOS 에서 실측).
+        if ! \(move) -h "$destination" "$backup"; then
             cleanup
             exit 1
         fi
+        # 옮긴 것이 방금 확인한 그 항목인지 — 아니면 더 손대지 않고 멈춘다.
+        if [ -L "$backup" ] || [ "$(/usr/bin/stat -f '%i:%d' "$backup")" != "$previous_id" ]; then
+            printf '%s\\n' 'onepercent: backup-mismatch' >&2
+            exit \(Exit.backupMismatch.rawValue)
+        fi
         # 실행 경로가 비어 있을 때만 놓고, 놓은 뒤 그 자리가 검증한 사본인지 파일 번호로 확인한다.
-        if [ ! -e "$destination" ] && [ ! -L "$destination" ] && \(move) "$staged" "$destination" \\
+        if [ ! -e "$destination" ] && [ ! -L "$destination" ] && \(move) -h "$staged" "$destination" \\
             && [ ! -L "$destination" ] && [ "$(/usr/bin/stat -f '%i:%d' "$destination")" = "$staged_id" ]; then
             # 새 앱 배치가 끝났으므로 백업 정리 실패는 교체 실패로 치지 않는다.
-            if \(move) "$backup" "$retired" && [ ! -L "$retired" ] \\
-                && [ "$(/usr/bin/stat -f '%i:%d' "$retired")" = "$previous_id" ]; then
+            # 지우기 전에 옛 앱인지 확인한다: 파일 번호, 번들 ID, 같은 요구사항의 서명(보안 리뷰 P1-1 고침 5). 아니면 지우지 않고 남긴다.
+            if \(move) -h "$backup" "$retired" && [ ! -L "$retired" ] \\
+                && [ "$(/usr/bin/stat -f '%i:%d' "$retired")" = "$previous_id" ] \\
+                && [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$retired/Contents/Info.plist")" = \(Self.shellQuote(identity.bundleID)) ] \\
+                && \(codesign) --verify --deep --strict --all-architectures \(Self.shellQuote("-R=" + requirement)) "$retired"; then
                 if ! \(remove) -rf "$staging"; then
                     printf '%s\\n' "onepercent: backup-cleanup-failed $staging"
                 fi
             else
                 # 백업 자리에 다른 항목이 있었다. 지우지 않고 제자리로 돌려놓는다.
                 if { [ -e "$retired" ] || [ -L "$retired" ]; } && [ ! -e "$backup" ] && [ ! -L "$backup" ]; then
-                    \(move) "$retired" "$backup"
+                    \(move) -h "$retired" "$backup"
                 fi
                 if [ ! -e "$retired" ] && [ ! -L "$retired" ]; then
                     \(remove) -rf "$staging"
@@ -207,7 +244,7 @@ struct AdminReplacementScript {
             fi
         else
             # 다른 항목이 실행 경로에 생겼다면 덮어쓰거나 그 안에 백업을 넣지 않는다.
-            if [ ! -e "$destination" ] && [ ! -L "$destination" ] && \(move) "$backup" "$destination"; then
+            if [ ! -e "$destination" ] && [ ! -L "$destination" ] && \(move) -h "$backup" "$destination"; then
                 cleanup
                 printf '%s\\n' 'onepercent: place-failed-restored' >&2
                 exit \(Exit.placeFailedRestored.rawValue)
@@ -229,8 +266,9 @@ struct AdminReplacementScript {
         case .copyChanged: .copyChanged
         case .stagingUnsafe: .stagingUnsafe
         case .placeFailedRestored: .placeFailedRestored
-        case .placeAndRestoreFailed:
+        case .placeAndRestoreFailed, .backupMismatch:
             .replaceRecoveryFailed(reason: message, backupPath: backup.path, destinationPath: destination.path)
+        case .destinationUnsafe: .replaceFailed("the app's folder is not protected, or the installed item is not this app")
         case nil: .replaceFailed(message)
         }
     }

@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "App baharu tidak dapat diletakkan, jadi app sebelumnya telah dipulihkan.";
 "error.replaceRecoveryFailed" = "Penggantian app gagal dan tidak dapat dipulihkan secara automatik. Sandaran app sebelumnya telah disimpan.\nSandaran: %1$@\nPulihkan ke: %2$@\nGunakan “Pergi ke Folder” dalam Finder untuk mencari sandaran, kemudian letakkan semula dengan nama asalnya (memerlukan pentadbir).\n(%3$@)";
 "error.relaunchFailed" = "Versi baharu telah dipasang, tetapi app tidak dapat dibuka semula. Sila buka sendiri. (%@)";
+"error.quitCancelled" = "Versi baharu telah dibuka, tetapi salinan app sebelumnya tidak keluar. Sila keluar daripadanya sendiri.";
+"error.fileSystem" = "Operasi fail gagal — %@";
+"error.administratorInstallDisabled" = "Salinan app ini hanya boleh diganti dengan kata laluan pentadbir, jadi ia tidak dipasang dari dalam app. Muat turun versi baharu dari halaman keluaran dan ganti app sendiri.";
 "archive.unreadable" = "senarai ZIP tidak dapat dibaca";
 "archive.empty" = "arkib kosong";
 "archive.tooManyEntries" = "terlalu banyak item (%1$@, maks. %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "semakan tandatangan kod gagal";
 "verify.notarization" = "semakan notarisasi Apple gagal";
 "verify.notHigher" = "versi tidak lebih baharu daripada yang dipasang";
+"verify.buildNotHigher" = "nombor binaan (CFBundleVersion) tidak lebih tinggi daripada yang dipasang";
+"verify.buildUnreadable" = "nombor binaan (CFBundleVersion) tidak dapat dibaca";
 "verify.releaseMismatch" = "versi yang dimuat turun (%1$@) bukan versi yang diumumkan (%2$@)";
 "verify.unknownValue" = "tidak boleh dibaca";
 "verify.unreadable" = "versi tidak dapat dibaca";

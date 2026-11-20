@@ -37,6 +37,15 @@ public struct AvailableUpdate: Equatable, Sendable {
     public let asset: ReleaseAsset
     public let pageURL: URL?
     public let notes: String?
+
+    /// For previews and tests of your own UI. Real values come from a check.
+    public init(tag: String, version: String, asset: ReleaseAsset, pageURL: URL? = nil, notes: String? = nil) {
+        self.tag = tag
+        self.version = version
+        self.asset = asset
+        self.pageURL = pageURL
+        self.notes = notes
+    }
 }
 
 /// Pure decisions about releases. No network, no files.
@@ -45,6 +54,21 @@ enum ReleaseDecision {
     static func latestReleaseURL(repository: String) -> URL? {
         guard OnePercentConfiguration.isValidRepository(repository) else { return nil }
         return URL(string: "https://api.github.com/repos/\(repository)/releases/latest")
+    }
+
+    /// An address for messages: scheme and host only, never the whole URL (2026-11-20 보안 리뷰 P3-7).
+    static func display(_ address: String?) -> String {
+        guard let address, let url = URL(string: address), let scheme = url.scheme, let host = url.host else {
+            return String((address ?? "?").prefix(80))
+        }
+        return "\(scheme)://\(host)"
+    }
+
+    /// `url` is on github.com under `/<repository>/<kind>/` (case-insensitive, like GitHub).
+    /// 2026-11-20 (PR #1 보안 리뷰 P3-8): 호스트만 보던 것을 저장소 경로까지 본다.
+    static func isUnderRepository(_ url: URL, repository: String, kind: String) -> Bool {
+        guard url.scheme?.lowercased() == "https", url.host?.lowercased() == "github.com" else { return false }
+        return url.path.lowercased().hasPrefix("/\(repository.lowercased())/\(kind)/")
     }
 
     /// HTTPS and an allowed host.
@@ -99,6 +123,7 @@ enum ReleaseDecision {
         guard !wanted.isEmpty, !wanted.contains("/"), !wanted.hasPrefix(".") else { return nil }
         return release.assets.first {
             $0.name == wanted && isAllowedURL($0.downloadURL, hosts: configuration.allowedHosts)
+                && isUnderRepository($0.downloadURL, repository: configuration.repository, kind: "releases/download")
                 && $0.size <= configuration.limits.maxAssetBytes
         }
     }
@@ -109,7 +134,8 @@ enum ReleaseDecision {
         guard let version = version(fromTag: release.tag, configuration: configuration),
               configuration.versionScheme.isNewer(version, than: currentVersion),
               let asset = selectAsset(in: release, configuration: configuration) else { return nil }
-        return AvailableUpdate(tag: release.tag, version: version, asset: asset, pageURL: release.pageURL, notes: release.notes)
+        let page = release.pageURL.flatMap { isUnderRepository($0, repository: configuration.repository, kind: "releases") ? $0 : nil }
+        return AvailableUpdate(tag: release.tag, version: version, asset: asset, pageURL: page, notes: release.notes)
     }
 
     /// The release page for a tag, built without a server response (after relaunch).

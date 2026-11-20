@@ -19,6 +19,9 @@ enum UpdateDecision {
 
     /// The shortest interval allowed for ``CheckSchedule/every(_:)`` — GitHub allows 60 unauthenticated requests per hour per IP.
     static let minimumInterval: TimeInterval = 60 * 60
+    /// Slack for interval schedules. 2026-11-20 (리뷰 P3-9): 확인 시각은 응답 때 찍히고 틱은 정시에 와서,
+    /// 여유가 없으면 매일 확인이 25시간마다, 매시간 확인이 2시간마다가 됐다.
+    static let scheduleSlack: TimeInterval = 5 * 60
 
     /// May OnePercent ask GitHub now?
     /// - `forced` (the user pressed "Check now"): always.
@@ -33,9 +36,9 @@ enum UpdateDecision {
         if lastCheck > now { return true }
         switch schedule {
         case .monthly: return lastCheck < startOfMonth(containing: now, calendar: calendar)
-        case .weekly: return now.timeIntervalSince(lastCheck) >= 7 * 24 * 60 * 60
-        case .daily: return now.timeIntervalSince(lastCheck) >= 24 * 60 * 60
-        case .every(let interval): return now.timeIntervalSince(lastCheck) >= max(interval, minimumInterval)
+        case .weekly: return now.timeIntervalSince(lastCheck) >= 7 * 24 * 60 * 60 - scheduleSlack
+        case .daily: return now.timeIntervalSince(lastCheck) >= 24 * 60 * 60 - scheduleSlack
+        case .every(let interval): return now.timeIntervalSince(lastCheck) >= max(interval, minimumInterval) - scheduleSlack
         case .manual: return false
         }
     }
@@ -54,14 +57,26 @@ enum UpdateDecision {
         return configuration.versionScheme.isValid(text) ? text : nil
     }
 
-    /// Is the new bundle newer than the running one? The version must increase, and — unless turned off —
-    /// so must the build number (`CFBundleVersion`, compared as dotted numbers). Anything unreadable: no.
+    /// Build numbers (`CFBundleVersion`): one to four dot-separated parts of up to 18 digits, so date-time builds such as
+    /// `202611201530` work. 2026-11-20 (리뷰 P2-6): 예전엔 버전 규칙(마디당 9자리)으로 읽어 12자리 빌드가 늘 거부됐다.
+    static let buildScheme = VersionScheme(name: "build") { text in
+        VersionScheme.numericParts(text, allowedCounts: 1...4, maxDigits: 18)
+    }
+
+    /// Why the new bundle is not newer than the running one, or `nil` when it is. The version must increase, and —
+    /// unless turned off — so must the build number. Anything unreadable: refused, with its own reason.
+    static func increaseProblem(currentVersion: String, currentBuild: String?, newVersion: String?, newBuild: String?,
+                                configuration: OnePercentConfiguration) -> VerificationFailure? {
+        guard let newVersion, configuration.versionScheme.isNewer(newVersion, than: currentVersion) else { return .versionNotHigher }
+        guard configuration.requireBuildIncrease else { return nil }
+        guard let currentBuild, let newBuild, buildScheme.isValid(currentBuild), buildScheme.isValid(newBuild) else { return .buildUnreadable }
+        return buildScheme.isNewer(newBuild, than: currentBuild) ? nil : .buildNotHigher
+    }
+
     static func isVersionIncrease(currentVersion: String, currentBuild: String?, newVersion: String?, newBuild: String?,
                                   configuration: OnePercentConfiguration) -> Bool {
-        guard let newVersion, configuration.versionScheme.isNewer(newVersion, than: currentVersion) else { return false }
-        guard configuration.requireBuildIncrease else { return true }
-        guard let currentBuild, let newBuild else { return false }
-        return VersionScheme.numeric.isNewer(newBuild, than: currentBuild)
+        increaseProblem(currentVersion: currentVersion, currentBuild: currentBuild, newVersion: newVersion, newBuild: newBuild,
+                        configuration: configuration) == nil
     }
 
     /// Is the downloaded app exactly the release that was announced?
@@ -91,9 +106,11 @@ enum UpdateDecision {
         // 2026-11-20: 경로를 다듬지 않는다. `standardizingPath`·`standardizedFileURL` 은 경로가 있으면 `/private` 를 떼어
         // `/var`(링크) 쪽 경로를 만든다 — 관리자 스크립트는 링크인 조상을 거부한다(시험에서 잡힘). 대신 이상한 꼴은 거부한다.
         var path = runningBundlePath
-        while path.count > 1, path.hasSuffix("/") { path.removeLast() }
-        let parts = path.split(separator: "/", omittingEmptySubsequences: false).dropFirst()
-        guard path.hasPrefix("/"), !parts.contains(where: { $0.isEmpty || $0 == "." || $0 == ".." }) else {
+        while path.utf8.count > 1, path.utf8.last == 0x2F { path.removeLast() }
+        // 바이트로 자른다(보안 리뷰 P3-2).
+        let parts = Array(path.utf8).split(separator: 0x2F, omittingEmptySubsequences: false).dropFirst()
+        guard path.utf8.first == 0x2F,
+              !parts.contains(where: { $0.isEmpty || $0.elementsEqual([0x2E]) || $0.elementsEqual([0x2E, 0x2E]) }) else {
             return .failure(.notAtRequiredLocation(required: configuration.appFolderName, running: runningBundlePath))
         }
         // App Translocation: Gatekeeper 가 격리 표시가 남은 앱을 읽기 전용 임시 복사본으로 실행한다. 거기를 바꿔도 소용이 없다.
@@ -136,7 +153,11 @@ enum UpdateDecision {
     }
 
     /// Unknown owner → the administrator path (if that fails the old app stays).
-    static func replaceStrategy(destinationOwnerUID: UInt32?, currentUID: UInt32, parentWritable: Bool) -> ReplaceStrategy {
+    /// 2026-11-20 (PR #1 보안 리뷰 P1-1): 부모 폴더가 이 사용자 것이면 절대 관리자 경로로 보내지 않는다 — 같은 사용자 코드가
+    /// `chmod u-w` 한 번으로 root 경로를 강제할 수 있었다. 사용자 경로가 실패하면 그냥 실패한다.
+    static func replaceStrategy(destinationOwnerUID: UInt32?, parentOwnerUID: UInt32?, currentUID: UInt32,
+                                parentWritable: Bool) -> ReplaceStrategy {
+        if parentOwnerUID == currentUID { return .userAtomic }
         guard let destinationOwnerUID, destinationOwnerUID == currentUID, parentWritable else { return .adminPrompt }
         return .userAtomic
     }
@@ -149,7 +170,8 @@ enum UpdateDecision {
     /// OS 수준에서 한 요구사항으로 묶어 막는다. 2026-11-20: 세 곳에 따로 있던 문자열을 하나로 합치고 첫 검사에도 번들 ID 를 넣었다(Fable 리뷰).
     /// 2026-11-20 (리서치 P1 — Sparkle·AppUpdater 와 같은 꼴): Developer ID 표시 두 개(중간 인증서 6.2.6, 잎 인증서 6.1.13)를 더해,
     /// 같은 팀의 개발용(Apple Development) 서명 빌드는 통과하지 못하게 좁혔다. 실측(이 Mac, 다른 회사 앱): Developer ID 앱 4개 통과,
-    /// 팀만 바꾸면 전부 거부, App Store 서명 앱은 좁히기 전부터 거부. 개발용 인증서 빌드로는 재 보지 못했다(확인 못 함).
+    /// 팀만 바꾸면 전부 거부, App Store 서명 앱은 좁히기 전부터 거부. 같은 날 보안 리뷰(Fable 5.2)가 같은 팀의 Apple Development
+    /// 서명 빌드로 재 봤다: 예전 꼴(팀+ID)은 통과(0), 지금 요구사항은 거부(3).
     /// Callers must pass validated values (``OnePercentConfiguration/problems`` is empty).
     static func codeRequirement(bundleIdentifier: String, team: String) -> String {
         "anchor apple generic and identifier \"\(bundleIdentifier)\""

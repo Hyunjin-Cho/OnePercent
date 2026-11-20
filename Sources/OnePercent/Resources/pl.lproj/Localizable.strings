@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "Nie udało się umieścić nowej aplikacji, więc przywrócono poprzednią.";
 "error.replaceRecoveryFailed" = "Zastąpienie aplikacji nie powiodło się i nie udało się jej automatycznie przywrócić. Zachowano kopię zapasową poprzedniej aplikacji.\nKopia zapasowa: %1$@\nPrzywróć do: %2$@\nUżyj „Idź do folderu” w Finderze, aby znaleźć kopię, i odłóż ją na miejsce pod oryginalną nazwą (wymaga uprawnień administratora).\n(%3$@)";
 "error.relaunchFailed" = "Nowa wersja jest zainstalowana, ale aplikacja nie mogła otworzyć się ponownie. Otwórz ją samodzielnie. (%@)";
+"error.quitCancelled" = "Nowa wersja została otwarta, ale poprzednia kopia aplikacji się nie zamknęła. Zakończ ją samodzielnie.";
+"error.fileSystem" = "Operacja na pliku nie powiodła się — %@";
+"error.administratorInstallDisabled" = "Tę kopię aplikacji można zastąpić tylko hasłem administratora, więc nie została zainstalowana z poziomu aplikacji. Pobierz nową wersję ze strony wydania i zastąp aplikację samodzielnie.";
 "archive.unreadable" = "nie można odczytać listy ZIP";
 "archive.empty" = "archiwum jest puste";
 "archive.tooManyEntries" = "za dużo elementów (%1$@, maks. %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "sprawdzenie podpisu kodu nie powiodło się";
 "verify.notarization" = "sprawdzenie notaryzacji Apple nie powiodło się";
 "verify.notHigher" = "wersja nie jest nowsza od zainstalowanej";
+"verify.buildNotHigher" = "numer kompilacji (CFBundleVersion) nie jest wyższy od zainstalowanego";
+"verify.buildUnreadable" = "nie można odczytać numeru kompilacji (CFBundleVersion)";
 "verify.releaseMismatch" = "pobrana wersja (%1$@) nie jest zapowiedzianą (%2$@)";
 "verify.unknownValue" = "nieczytelne";
 "verify.unreadable" = "nie można odczytać wersji";

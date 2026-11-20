@@ -99,12 +99,15 @@ enum UpdateArchive {
     }
 
     /// A plain relative path under `<appFolder>/` — no `..`, `.`, empty parts, backslashes or NUL. A trailing `/` is allowed.
+    /// 2026-11-20 (PR #1 보안 리뷰 P3-2): 바이트로 자른다. Swift 글자(Character) 단위로 자르면 `/` 뒤의 결합 문자·앞의 U+0600 이
+    /// `..` 마디를 한 글자로 묶어 숨겼다.
     static func isInsideApp(_ name: String, appFolder: String) -> Bool {
-        guard name.hasPrefix(appFolder + "/"), !name.contains("\\"), !name.contains("\0") else { return false }
-        let parts = name.split(separator: "/", omittingEmptySubsequences: false)
+        let bytes = Array(name.utf8)
+        guard bytes.starts(with: Array((appFolder + "/").utf8)), !bytes.contains(0x5C), !bytes.contains(0) else { return false }
+        let parts = bytes.split(separator: 0x2F, omittingEmptySubsequences: false)
         for (index, part) in parts.enumerated() {
             if part.isEmpty { if index == parts.count - 1 { continue }; return false }
-            if part == "." || part == ".." { return false }
+            if part.elementsEqual([0x2E]) || part.elementsEqual([0x2E, 0x2E]) { return false }
         }
         return true
     }
@@ -129,8 +132,17 @@ enum UpdateArchive {
         // 2026-11-20 (Fable 리뷰): 링크 항목 "아래"에 다른 항목이 있으면 그 항목은 링크를 따라 앱 밖에 써질 수 있다.
         // 실측(macOS 27.2.1): 지금 ditto 는 "Not a directory" 로 멈추지만, 도구의 동작에 기대지 않고 목록 단계에서 거부한다.
         // 링크 자체는 막지 않는다 — 프레임워크 번들(Versions/Current → A)에 정상으로 들어 있다.
-        for link in links {
-            if entries.contains(where: { $0.name.hasPrefix(link + "/") }) { return .linkedEntry(appFolder: appFolder) }
+        // 2026-11-20 (보안 리뷰 P3-4): 항목마다 조상 경로를 링크 집합에서 찾는다(예전엔 링크 × 항목, 제곱 시간).
+        let linkSet = Set(links)
+        if !linkSet.isEmpty {
+            for entry in entries {
+                var ancestor = Substring(entry.name)
+                while ancestor.hasSuffix("/") { ancestor = ancestor.dropLast() }
+                while let slash = ancestor.lastIndex(of: "/") {
+                    ancestor = ancestor[..<slash]
+                    if linkSet.contains(String(ancestor)) { return .linkedEntry(appFolder: appFolder) }
+                }
+            }
         }
         return nil
     }
@@ -177,16 +189,21 @@ enum UpdateArchive {
     }
 
     /// Lexical check: does `destination`, read from the link's folder, stay within the app root?
+    /// 2026-11-20 (PR #1 보안 리뷰 P3-1): `..` 는 맨 앞에만 허용한다. 중간의 `..` 는 그 앞 마디가 링크일 때 글자 계산과 실제
+    /// 해석이 어긋난다(`a/b/c/s -> ../../..` 를 지나는 `a/b/c/s/../../../victim`). 바이트로 자른다(P3-2).
     static func staysInside(linkAt relative: String, destination: String) -> Bool {
-        guard !destination.isEmpty, !destination.hasPrefix("/") else { return false }
-        var stack = relative.split(separator: "/").dropLast().map(String.init)
-        for part in destination.split(separator: "/", omittingEmptySubsequences: true) {
-            switch part {
-            case ".": continue
-            case "..":
-                guard !stack.isEmpty else { return false }
+        let target = Array(destination.utf8)
+        guard !target.isEmpty, target.first != 0x2F, !target.contains(0) else { return false }
+        var stack = Array(relative.utf8).split(separator: 0x2F).dropLast().map(Array.init)
+        var seenName = false
+        for part in target.split(separator: 0x2F, omittingEmptySubsequences: true) {
+            if part.elementsEqual([0x2E]) { continue }
+            if part.elementsEqual([0x2E, 0x2E]) {
+                guard !seenName, !stack.isEmpty else { return false }
                 stack.removeLast()
-            default: stack.append(String(part))
+            } else {
+                seenName = true
+                stack.append(Array(part))
             }
         }
         return true

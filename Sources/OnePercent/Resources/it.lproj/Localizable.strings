@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "Non è stato possibile collocare la nuova app, quindi è stata ripristinata quella precedente.";
 "error.replaceRecoveryFailed" = "La sostituzione dell’app non è riuscita e non è stato possibile ripristinarla automaticamente. È stato conservato un backup dell’app precedente.\nBackup: %1$@\nDa ripristinare in: %2$@\nUsa «Vai alla cartella» nel Finder per trovare il backup e rimettilo al suo posto con il nome originale (servono i permessi di amministratore).\n(%3$@)";
 "error.relaunchFailed" = "La nuova versione è installata, ma l’app non è riuscita a riaprirsi. Aprila tu. (%@)";
+"error.quitCancelled" = "La nuova versione si è aperta, ma la copia precedente dell’app non si è chiusa. Chiudila tu.";
+"error.fileSystem" = "Un’operazione sui file non è riuscita — %@";
+"error.administratorInstallDisabled" = "Questa copia dell’app può essere sostituita solo con una password di amministratore, quindi non è stata installata dall’app. Scarica la nuova versione dalla pagina di rilascio e sostituisci l’app tu.";
 "archive.unreadable" = "impossibile leggere l’elenco dello ZIP";
 "archive.empty" = "l’archivio è vuoto";
 "archive.tooManyEntries" = "troppi elementi (%1$@, max %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "il controllo della firma del codice non è riuscito";
 "verify.notarization" = "il controllo della notarizzazione Apple non è riuscito";
 "verify.notHigher" = "la versione non è più recente di quella installata";
+"verify.buildNotHigher" = "il numero di build (CFBundleVersion) non è più alto di quello installato";
+"verify.buildUnreadable" = "impossibile leggere il numero di build (CFBundleVersion)";
 "verify.releaseMismatch" = "la versione scaricata (%1$@) non è quella annunciata (%2$@)";
 "verify.unknownValue" = "illeggibile";
 "verify.unreadable" = "impossibile leggere la versione";

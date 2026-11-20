@@ -11,8 +11,10 @@ import Testing
     var requirement: String { UpdateDecision.codeRequirement(bundleIdentifier: Fixture.bundleID, team: Fixture.team) }
 
     nonisolated static let rejections: Set<String> = ["swapped-id", "swapped-version", "swapped-build", "swapped-signature",
-                                          "tampered-after-copy", "linked-copy", "real-codesign", "linked-destination", "unsafe-parent"]
-    nonisolated static let successes: Set<String> = ["real", "modes", "acl", "cleanup", "sticky-parent", "private-tmp", "backup-swapped"]
+                                          "tampered-after-copy", "linked-copy", "real-codesign", "linked-destination", "unsafe-parent",
+                                          "unprotected-folder", "not-this-app"]
+    nonisolated static let successes: Set<String> = ["real", "modes", "acl", "cleanup", "sticky-parent", "private-tmp", "backup-swapped",
+                                         "backup-link", "swapped-before-backup"]
     nonisolated static let steps = ["real", "modes", "acl", "copy", "backup", "place", "restore", "occupied", "cleanup",
                         "sticky-parent", "private-tmp", "prestaged", "raced-place", "backup-swapped"] + rejections.sorted()
 
@@ -88,8 +90,18 @@ import Testing
             let target = root.appendingPathComponent("linked-target.app")
             try writeBundle(target, version: "old", identity: identity)
             try fm.createSymbolicLink(at: script.destination, withDestinationURL: target)
+        } else if step == "not-this-app" {
+            try writeBundle(script.destination, version: "old", identity: VerifiedIdentity(bundleID: "com.example.other", version: "1.0", build: "1"))
         } else {
             try writeBundle(script.destination, version: "old", identity: identity)
+        }
+        let other = root.appendingPathComponent("Other.app")
+        try writeBundle(other, version: "other-app", identity: VerifiedIdentity(bundleID: "com.example.other", version: "9", build: "9"))
+        let protected = root.appendingPathComponent("protected")
+        if step == "backup-link" {
+            // 보안 리뷰 재현 A: 백업 이름 자리에 보호 폴더를 가리키는 링크를 미리 심는다.
+            try fm.createDirectory(at: protected, withIntermediateDirectories: true)
+            try fm.createSymbolicLink(at: script.backup, withDestinationURL: protected)
         }
         let copy = root.appendingPathComponent("copy.sh"), move = root.appendingPathComponent("move.sh")
         let remove = root.appendingPathComponent("remove.sh"), codesign = root.appendingPathComponent("codesign.sh")
@@ -108,6 +120,7 @@ import Testing
             """),
             (move, """
             #!/bin/sh
+            if [ "$1" = "-h" ]; then shift; fi
             if [ "$OP_TEST_STEP" = backup ] && [ "$2" = "$OP_TEST_BACKUP" ]; then exit 72; fi
             if { [ "$OP_TEST_STEP" = place ] || [ "$OP_TEST_STEP" = restore ] || [ "$OP_TEST_STEP" = occupied ]; } && [ "$1" = "$OP_TEST_STAGE" ]; then
                 if [ "$OP_TEST_STEP" = occupied ]; then /bin/mkdir -p "$2"; printf other > "$2/version"; fi
@@ -118,7 +131,7 @@ import Testing
             if [ "$OP_TEST_STEP" = backup-swapped ] && [ "$1" = "$OP_TEST_BACKUP" ] && [ "$2" = "$OP_TEST_RETIRED" ]; then
                 /bin/mv "$1" "$1.real"; /bin/mkdir -p "$1"; printf foreign > "$1/version"
             fi
-            exec /bin/mv "$@"
+            exec /bin/mv -h "$@"
             """),
             (remove, """
             #!/bin/sh
@@ -128,6 +141,10 @@ import Testing
             (codesign, """
             #!/bin/sh
             printf '%s\\n' "$@" >> "$OP_TEST_CODESIGN_LOG"
+            if [ "$OP_TEST_STEP" = swapped-before-backup ] && [ ! -e "$OP_TEST_DEST.real" ]; then
+                # 검증하는 동안 같은 사용자가 설치 위치의 옛 앱을 치우고 다른 앱(같은 폴더의 무관한 앱)을 그 자리에 놓는다.
+                /bin/mv "$OP_TEST_DEST" "$OP_TEST_DEST.real"; /bin/mv "$OP_TEST_OTHER" "$OP_TEST_DEST"
+            fi
             if [ "$OP_TEST_STEP" = swapped-signature ]; then exit 3; fi
             exit 0
             """),
@@ -136,11 +153,13 @@ import Testing
             try text.write(to: url, atomically: true, encoding: .utf8)
             try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
         }
-        let commands: AdminReplacementScript.Commands = switch step {
-        case "real", "acl", "sticky-parent", "private-tmp": .init(codesign: codesign.path)
+        var commands: AdminReplacementScript.Commands = switch step {
+        case "real", "acl", "sticky-parent", "private-tmp", "backup-link": .init(codesign: codesign.path)
         case "real-codesign": .init()
         default: .init(copy: copy.path, move: move.path, remove: remove.path, codesign: codesign.path)
         }
+        // 시험은 root 가 아니므로, 보호 폴더의 주인으로 이 사용자를 쓴다. "unprotected-folder" 만 제품 값(root)을 쓴다.
+        commands.protectedOwner = step == "unprotected-folder" ? 0 : getuid()
         let command = script.shellCommand(commands: commands)
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -150,6 +169,7 @@ import Testing
             "OP_TEST_STEP": step, "OP_TEST_STAGE": script.stagedApp.path, "OP_TEST_BACKUP": script.backup.path,
             "OP_TEST_STAGING": script.staging.path, "OP_TEST_RETIRED": script.retiredBackup.path,
             "OP_TEST_MODE_LOG": modeLog.path, "OP_TEST_CODESIGN_LOG": codesignLog.path,
+            "OP_TEST_DEST": script.destination.path, "OP_TEST_OTHER": other.path,
         ]) { _, new in new }
         let pipe = Pipe()
         task.standardOutput = pipe
@@ -163,8 +183,12 @@ import Testing
         #expect(!fm.fileExists(atPath: root.appendingPathComponent("injected").path)
                 && !fm.fileExists(atPath: root.appendingPathComponent("injected2").path), "shell characters in paths are never run")
         if Self.rejections.contains(step) {
-            #expect(status == (step == "unsafe-parent" ? AdminReplacementScript.Exit.stagingUnsafe.rawValue : AdminReplacementScript.Exit.copyChanged.rawValue),
-                    "\(step): \(status) \(output)")
+            let expected: AdminReplacementScript.Exit = switch step {
+            case "unsafe-parent": .stagingUnsafe
+            case "unprotected-folder", "not-this-app": .destinationUnsafe
+            default: .copyChanged
+            }
+            #expect(status == expected.rawValue, "\(step): \(status) \(output)")
             #expect(version(script.destination) == "old" && mode(script.backup) == nil && mode(script.staging) == nil)
             if step == "linked-destination" {
                 #expect((try? fm.destinationOfSymbolicLink(atPath: script.destination.path)) != nil, "a linked destination is not followed")
@@ -182,6 +206,11 @@ import Testing
             case "backup-swapped":
                 #expect(version(script.backup) == "foreign" && output.contains("backup-cleanup-failed"), "a swapped-in folder is put back, not deleted")
                 #expect(version(URL(fileURLWithPath: script.backup.path + ".real")) == "old")
+            case "backup-link":
+                #expect(((try? fm.contentsOfDirectory(atPath: protected.path)) ?? ["?"]).isEmpty, "nothing was moved into the linked folder (mv -h)")
+            case "swapped-before-backup":
+                // 보안 리뷰 재현 B: 바꿔 놓인 무관한 앱을 옛 앱으로 알고 지우지 않는다.
+                #expect(version(script.backup) == "other-app" && output.contains("backup-cleanup-failed"), "\(output)")
             case "acl":
                 #expect(aclListing(script.source).contains(" allow "), "premise: the source has ACLs")
                 #expect(!aclListing(script.destination).contains(" allow "), "no ACL survives on the placed app")
@@ -201,11 +230,12 @@ import Testing
                 #expect(error == nil && roundTrip?.stringValue == command, "AppleScript literal round trip")
                 #expect(NSAppleScript(source: script.appleScriptSource)?.compileAndReturnError(&error) == true && error == nil, "the real script compiles")
                 let real = script.shellCommand()
-                let order = ["/usr/bin/codesign", "/bin/chmod -R u-s,g-s,go-w", "/bin/chmod -RN", "/usr/sbin/chown -hR", "\"$destination\" \"$backup\""]
+                let order = ["/usr/bin/codesign", "/bin/chmod -R u-s,g-s,go-w", "/bin/chmod -RN", "/usr/sbin/chown -hR", "-h \"$destination\" \"$backup\""]
                     .map { real.range(of: $0)?.lowerBound }
                 #expect(!order.contains(nil) && zip(order, order.dropFirst()).allSatisfy { $0! < $1! }, "verify → strip modes → owner → swap")
-                let setup = ["[ -k \"$sparent\" ]", "/bin/mkdir -m 700 \"$staging\"", "\"$(/usr/bin/id -u):700\"", "/usr/bin/stat -f %d \"$staging\"",
-                             "\"$source\" \"$staged\"", "staged_id=", "\"$staged\" \"$destination\"", "= \"$staged_id\"", "\"$backup\" \"$retired\"", "= \"$previous_id\""]
+                let setup = ["pinfo=", "[ -k \"$sparent\" ]", "/bin/mkdir -m 700 \"$staging\"", "\"$(/usr/bin/id -u):700\"", "/usr/bin/stat -f %d \"$staging\"",
+                             "\"$source\" \"$staged\"", "staged_id=", "backup-mismatch", "-h \"$staged\" \"$destination\"", "= \"$staged_id\"",
+                             "-h \"$backup\" \"$retired\"", "\"$retired\")\" = \"$previous_id\""]
                     .map { real.range(of: $0)?.lowerBound }
                 #expect(!setup.contains(nil) && zip(setup, setup.dropFirst()).allSatisfy { $0! < $1! })
                 #expect(!real.contains("-rf \"$backup\""), "the backup in the app folder is never removed directly as root")

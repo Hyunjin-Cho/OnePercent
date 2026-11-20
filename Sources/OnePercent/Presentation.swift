@@ -24,24 +24,31 @@ public struct UpdateStatusPresentation: Equatable, Sendable {
     static func resolve(phase: OnePercentUpdater.Phase, error: OnePercentError?, storedLatestIsNewer: Bool) -> Self {
         switch phase {
         case .available:
-            return Self(line: .newVersion, install: true, menu: true, error: error)
+            return Self(resolved: .newVersion, install: true, menu: true, error: error)
         case .idle where storedLatestIsNewer:
             // 2026-11-13 (하늘키보드 #227 F-2): 다시 켠 뒤에도 설치 버튼이 남아야 한다. 버튼은 누를 때 다시 물은 뒤 설치한다.
-            return Self(line: .newVersion, install: true, recheck: true, menu: true, error: error)
+            return Self(resolved: .newVersion, install: true, recheck: true, menu: true, error: error)
         case .idle, .upToDate:
-            return Self(line: .none, error: error)
+            return Self(resolved: .none, error: error)
         case .checking:
-            return Self(line: .checking)
+            return Self(resolved: .checking)
         case .downloading(let fraction):
-            return Self(line: .downloading(fraction: fraction), cancel: true)
+            return Self(resolved: .downloading(fraction: fraction), cancel: true)
         case .verifying:
-            return Self(line: .verifying, cancel: true)
+            return Self(resolved: .verifying, cancel: true)
         case .installing:
-            return Self(line: .installing)
+            return Self(resolved: .installing)
         }
     }
 
-    private init(line: Line, install: Bool = false, recheck: Bool = false, cancel: Bool = false, menu: Bool = false,
+    /// For previews and tests of your own UI. Real values come from ``OnePercentUpdater/presentation``.
+    public init(line: Line, showsInstallButton: Bool = false, installRechecksFirst: Bool = false, showsCancelButton: Bool = false,
+                showsMenuNotice: Bool = false, error: OnePercentError? = nil) {
+        self.init(resolved: line, install: showsInstallButton, recheck: installRechecksFirst, cancel: showsCancelButton,
+                  menu: showsMenuNotice, error: error)
+    }
+
+    private init(resolved line: Line, install: Bool = false, recheck: Bool = false, cancel: Bool = false, menu: Bool = false,
                  error: OnePercentError? = nil) {
         self.line = line
         self.showsInstallButton = install
@@ -63,6 +70,9 @@ public struct UpdateStatusPresentation: Equatable, Sendable {
         }
     }
 
-    /// The error as localized text ("Update error: …"), or `nil`.
-    public var errorText: String? { error.map(OnePercentText.error) }
+    /// The error as localized text ("Update error: …"), or `nil`. A user's own cancel is shown without the "error" prefix.
+    public var errorText: String? {
+        guard let error else { return nil }
+        return error == .cancelled ? error.localizedDescription : OnePercentText.error(error)
+    }
 }

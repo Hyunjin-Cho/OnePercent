@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "Uutta appia ei voitu asettaa paikalleen, joten edellinen appi palautettiin.";
 "error.replaceRecoveryFailed" = "Apin korvaaminen epäonnistui, eikä sitä voitu palauttaa automaattisesti. Edellisestä apista säilytettiin varmuuskopio.\nVarmuuskopio: %1$@\nPalautettava sijaintiin: %2$@\nEtsi varmuuskopio Finderin Siirry kansioon -toiminnolla ja palauta se paikalleen alkuperäisellä nimellä (vaatii ylläpitäjän oikeudet).\n(%3$@)";
 "error.relaunchFailed" = "Uusi versio on asennettu, mutta appi ei voinut avautua uudelleen. Avaa se itse. (%@)";
+"error.quitCancelled" = "Uusi versio avautui, mutta apin aiempi kopio ei sulkeutunut. Lopeta se itse.";
+"error.fileSystem" = "Tiedostotoiminto epäonnistui – %@";
+"error.administratorInstallDisabled" = "Tämän apin kopion voi korvata vain ylläpitäjän salasanalla, joten sitä ei asennettu apin sisältä. Lataa uusi versio julkaisusivulta ja korvaa appi itse.";
 "archive.unreadable" = "ZIP-luetteloa ei voitu lukea";
 "archive.empty" = "arkisto on tyhjä";
 "archive.tooManyEntries" = "liian monta kohdetta (%1$@, enintään %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "koodin allekirjoituksen tarkistus epäonnistui";
 "verify.notarization" = "Applen notarisoinnin tarkistus epäonnistui";
 "verify.notHigher" = "versio ei ole asennettua uudempi";
+"verify.buildNotHigher" = "koontiversion numero (CFBundleVersion) ei ole asennettua suurempi";
+"verify.buildUnreadable" = "koontiversion numeroa (CFBundleVersion) ei voitu lukea";
 "verify.releaseMismatch" = "ladattu versio (%1$@) ei ole ilmoitettu versio (%2$@)";
 "verify.unknownValue" = "ei luettavissa";
 "verify.unreadable" = "versiota ei voitu lukea";

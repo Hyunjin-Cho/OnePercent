@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "새 앱을 놓지 못해 기존 앱을 원래 자리로 되돌렸어요.";
 "error.replaceRecoveryFailed" = "앱을 바꾸다 실패했고 자동 복구도 마치지 못했어요. 기존 앱의 백업은 남겨 뒀어요.\n백업: %1$@\n되돌릴 위치: %2$@\nFinder의 ‘폴더로 이동’으로 백업을 찾아 원래 위치와 이름으로 되돌려 주세요(관리자 권한 필요).\n(%3$@)";
 "error.relaunchFailed" = "새 버전은 설치됐지만 앱을 다시 열지 못했어요. 앱을 직접 열어 주세요. (%@)";
+"error.quitCancelled" = "새 버전은 열렸지만 이전 앱이 종료되지 않았어요. 이전 앱을 직접 종료해 주세요.";
+"error.fileSystem" = "파일 작업에 실패했어요 — %@";
+"error.administratorInstallDisabled" = "이 위치의 앱은 관리자 암호가 있어야 바꿀 수 있어서 앱 안에서 설치하지 않았어요. 릴리스 페이지에서 새 버전을 받아 직접 바꿔 주세요.";
 "archive.unreadable" = "ZIP 목록을 읽지 못함";
 "archive.empty" = "압축 파일이 비어 있음";
 "archive.tooManyEntries" = "항목이 너무 많음 (%1$@개, 최대 %2$@개)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "코드 서명 확인 실패";
 "verify.notarization" = "Apple 공증 확인 실패";
 "verify.notHigher" = "버전이 지금보다 높지 않음";
+"verify.buildNotHigher" = "빌드 번호(CFBundleVersion)가 지금보다 높지 않음";
+"verify.buildUnreadable" = "빌드 번호(CFBundleVersion)를 읽지 못함";
 "verify.releaseMismatch" = "받은 앱의 버전(%1$@)이 안내한 새 버전(%2$@)과 다름";
 "verify.unknownValue" = "읽지 못함";
 "verify.unreadable" = "버전 정보를 읽지 못함";

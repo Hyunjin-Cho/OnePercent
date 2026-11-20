@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "Aplicația nouă nu a putut fi pusă la locul ei, așa că a fost restaurată cea anterioară.";
 "error.replaceRecoveryFailed" = "Înlocuirea aplicației a eșuat și nu a putut fi restaurată automat. S-a păstrat o copie de rezervă a aplicației anterioare.\nCopie de rezervă: %1$@\nRestaurează în: %2$@\nFolosește „Accesează dosarul” în Finder pentru a găsi copia și pune-o la loc cu numele original (necesită drepturi de administrator).\n(%3$@)";
 "error.relaunchFailed" = "Versiunea nouă este instalată, dar aplicația nu s-a putut redeschide. Deschide-o tu. (%@)";
+"error.quitCancelled" = "Versiunea nouă s-a deschis, dar copia anterioară a aplicației nu s-a închis. Închide-o tu.";
+"error.fileSystem" = "O operațiune cu fișiere a eșuat — %@";
+"error.administratorInstallDisabled" = "Această copie a aplicației poate fi înlocuită doar cu o parolă de administrator, așa că nu a fost instalată din aplicație. Descarcă versiunea nouă de pe pagina lansării și înlocuiește aplicația tu.";
 "archive.unreadable" = "lista ZIP nu a putut fi citită";
 "archive.empty" = "arhiva este goală";
 "archive.tooManyEntries" = "prea multe elemente (%1$@, max. %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "verificarea semnăturii de cod a eșuat";
 "verify.notarization" = "verificarea notarizării Apple a eșuat";
 "verify.notHigher" = "versiunea nu este mai nouă decât cea instalată";
+"verify.buildNotHigher" = "numărul build-ului (CFBundleVersion) nu este mai mare decât cel instalat";
+"verify.buildUnreadable" = "numărul build-ului (CFBundleVersion) nu a putut fi citit";
 "verify.releaseMismatch" = "versiunea descărcată (%1$@) nu este cea anunțată (%2$@)";
 "verify.unknownValue" = "ilizibil";
 "verify.unreadable" = "versiunea nu a putut fi citită";

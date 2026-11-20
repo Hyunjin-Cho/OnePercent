@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "Không đặt được ứng dụng mới vào chỗ, nên đã khôi phục ứng dụng cũ về chỗ cũ.";
 "error.replaceRecoveryFailed" = "Thay thế ứng dụng thất bại và cũng không khôi phục tự động được. Bản sao lưu của ứng dụng cũ vẫn được giữ lại.\nBản sao lưu: %1$@\nKhôi phục về: %2$@\nDùng “Đi tới thư mục” trong Finder để tìm bản sao lưu rồi đưa nó về chỗ cũ với tên ban đầu (cần quyền quản trị viên).\n(%3$@)";
 "error.relaunchFailed" = "Đã cài phiên bản mới nhưng ứng dụng không mở lại được. Bạn hãy tự mở ứng dụng. (%@)";
+"error.quitCancelled" = "Phiên bản mới đã mở nhưng bản ứng dụng cũ chưa thoát. Bạn hãy tự thoát bản cũ.";
+"error.fileSystem" = "Thao tác với tệp thất bại — %@";
+"error.administratorInstallDisabled" = "Bản ứng dụng ở vị trí này chỉ có thể thay bằng mật khẩu quản trị viên, nên chưa được cài từ trong ứng dụng. Hãy tải phiên bản mới từ trang phát hành rồi tự thay ứng dụng.";
 "archive.unreadable" = "không đọc được danh sách ZIP";
 "archive.empty" = "tệp nén trống";
 "archive.tooManyEntries" = "quá nhiều mục (%1$@, tối đa %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "kiểm tra chữ ký mã thất bại";
 "verify.notarization" = "kiểm tra công chứng của Apple thất bại";
 "verify.notHigher" = "phiên bản không mới hơn bản đã cài";
+"verify.buildNotHigher" = "số bản dựng (CFBundleVersion) không cao hơn bản đã cài";
+"verify.buildUnreadable" = "không đọc được số bản dựng (CFBundleVersion)";
 "verify.releaseMismatch" = "phiên bản tải về (%1$@) không phải phiên bản đã thông báo (%2$@)";
 "verify.unknownValue" = "không đọc được";
 "verify.unreadable" = "không đọc được thông tin phiên bản";

@@ -50,6 +50,16 @@ public struct OnePercentConfiguration: Sendable {
     public var limits: Limits
     /// Hosts that requests and redirects may reach. HTTPS only.
     public var allowedHosts: Set<String>
+    /// Allow the administrator-password install (an app the user cannot write, for example installed with `sudo` or used
+    /// from a standard account). Default: `false`.
+    /// 2026-11-20 오너 결정(A): 보안 리뷰 P1-1 수정은 넣었지만 실제 Mac 의 암호 창으로 아직 해 보지 않았다 — 실기기 확인
+    /// (docs/MANUAL-TEST.md 2·3번) 전까지 기본으로 끈다. 꺼져 있으면 앱 안 설치 대신 릴리스 페이지에서 직접 바꾸라고 안내한다.
+    public var allowsAdministratorInstall: Bool
+    /// A repository to use **instead** of ``repository`` while testing. Set it only inside your own `#if DEBUG`;
+    /// OnePercent also ignores it unless it was itself built for debugging. Signature, notarization and version checks still apply.
+    /// 2026-11-20 (PR #1 보안 리뷰 P3-6): 예전엔 UserDefaults 키 두 개로 켰다 — 같은 사용자 코드가 `defaults write`(전역 도메인 포함)로
+    /// 저장소를 돌릴 수 있었다. 이제는 앱이 코드로만 켠다.
+    public var testRepository: String?
 
     public init(
         repository: String,
@@ -85,6 +95,8 @@ public struct OnePercentConfiguration: Sendable {
         self.userAgent = userAgent
         self.limits = limits
         self.allowedHosts = allowedHosts
+        self.testRepository = nil
+        self.allowsAdministratorInstall = false
     }
 
     /// GitHub's API host, the release page host and the asset CDN hosts.
@@ -110,6 +122,7 @@ public struct OnePercentConfiguration: Sendable {
     public var problems: [String] {
         var list: [String] = []
         if !Self.isValidRepository(repository) { list.append("repository must be owner/name") }
+        if let testRepository, !Self.isValidRepository(testRepository) { list.append("testRepository must be owner/name") }
         if !Self.isValidTeam(teamIdentifier) { list.append("teamIdentifier must be 10 uppercase letters or digits") }
         if !Self.isValidBundleIdentifier(bundleIdentifier) { list.append("bundleIdentifier has unsupported characters") }
         if !Self.isValidAppName(appName) { list.append("appName must be a plain file name") }

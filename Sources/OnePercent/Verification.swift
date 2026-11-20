@@ -84,6 +84,8 @@ enum UpdateVerifier {
         let currentBuild: String?
         /// The version the user was told about (the tag without its prefix).
         let releaseVersion: String
+        /// Compare against the running version and build. Only the release checker turns this off when it has no previous release.
+        var checkIncrease: Bool = true
     }
 
     static func extractAndVerify(_ input: Input, checks: BundleChecks = .live) throws -> VerifiedUpdate {
@@ -92,10 +94,12 @@ enum UpdateVerifier {
         let appFolder = configuration.appFolderName
         let limits = configuration.limits.archive
         try inspectArchive(input.zip, limits: limits, appFolder: appFolder)
+        try Task.checkCancellation()
         let extractDir = input.workDir.appendingPathComponent("extract", isDirectory: true)
         try fm.createDirectory(at: extractDir, withIntermediateDirectories: true)
         try extractGuarded(zip: input.zip, into: extractDir, limits: limits, log: input.workDir.appendingPathComponent("extract.log"))
         // 이름만 읽고 앱 안은 열지 않는다. 읽지 못하면 빈 목록 → 거부.
+        try Task.checkCancellation()
         let topLevel = (try? fm.contentsOfDirectory(atPath: extractDir.path)) ?? []
         if let problem = UpdateArchive.extractedTopLevelProblem(topLevel, appFolder: appFolder) { throw OnePercentError.archiveRejected(problem) }
 
@@ -112,6 +116,9 @@ enum UpdateVerifier {
             throw OnePercentError.archiveRejected(.missingApp(appFolder: appFolder))
         }
         if !UpdateArchive.escapingLinks(in: app).isEmpty { throw OnePercentError.archiveRejected(.escapingLink(appFolder: appFolder)) }
+        // 2026-11-20 (PR #1 보안 리뷰 P2-1): ZIP 이 정한 권한·ACL 을 그대로 설치하지 않는다(관리자 경로와 같은 정리).
+        // 코드 서명은 권한·ACL 을 덮지 않아 서명 검사로는 못 잡는다. setuid·setgid·그룹/다른 사용자 쓰기와 ACL 을 벗긴다.
+        try normalizePermissions(of: app)
 
         let info = NSDictionary(contentsOf: app.appendingPathComponent("Contents/Info.plist")) as? [String: Any]
         let bundleVersion = UpdateDecision.bundleVersion(info: info, configuration: configuration)
@@ -119,12 +126,18 @@ enum UpdateVerifier {
         let requirement = UpdateDecision.codeRequirement(bundleIdentifier: configuration.bundleIdentifier, team: configuration.teamIdentifier)
         var failures: [VerificationFailure] = []
         if info?["CFBundleIdentifier"] as? String != configuration.bundleIdentifier { failures.append(.bundleIdentifierMismatch) }
+        // 2026-11-20 (리뷰 P2-3): 검사 사이마다 취소를 본다 — 서명·공증 검사는 수 초씩 걸린다.
+        try Task.checkCancellation()
         if !checks.signedByTeam(app, requirement) { failures.append(.notSignedByTeam) }
+        try Task.checkCancellation()
         if !checks.codesignValid(app, requirement) { failures.append(.codeSignatureInvalid) }
+        try Task.checkCancellation()
         if !checks.notarizationAccepted(app) { failures.append(.notarizationRejected) }
-        if !UpdateDecision.isVersionIncrease(currentVersion: input.currentVersion, currentBuild: input.currentBuild,
-                                             newVersion: bundleVersion, newBuild: build, configuration: configuration) {
-            failures.append(.versionNotHigher)
+        try Task.checkCancellation()
+        if input.checkIncrease, let problem = UpdateDecision.increaseProblem(
+            currentVersion: input.currentVersion, currentBuild: input.currentBuild,
+            newVersion: bundleVersion, newBuild: build, configuration: configuration) {
+            failures.append(problem)
         }
         if !UpdateDecision.bundleMatchesRelease(bundleVersion: bundleVersion, releaseVersion: input.releaseVersion, configuration: configuration) {
             failures.append(.releaseMismatch(bundleVersion: bundleVersion, releaseVersion: input.releaseVersion))
@@ -183,8 +196,16 @@ enum UpdateVerifier {
         let started = Date()
         do { try task.run() } catch { throw OnePercentError.extractFailed(error.localizedDescription) }
         var stopReason: ArchiveProblem?
+        var cancelled = false
         while task.isRunning {
             Thread.sleep(forTimeInterval: interval)
+            if Task.isCancelled {
+                cancelled = true
+                task.terminate()
+                for _ in 0..<20 where task.isRunning { Thread.sleep(forTimeInterval: 0.05) }
+                if task.isRunning { kill(task.processIdentifier, SIGKILL) }
+                break
+            }
             let usage = diskUsage(of: directory, stopAfter: limits.entries)
             if let reason = UpdateArchive.extractionProblem(bytes: usage.bytes, items: usage.items,
                                                             elapsed: Date().timeIntervalSince(started), limits: limits) {
@@ -196,6 +217,10 @@ enum UpdateVerifier {
             }
         }
         task.waitUntilExit()
+        if cancelled {
+            for item in (try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? [] { try? fm.removeItem(at: item) }
+            throw CancellationError()
+        }
         if stopReason == nil {
             let usage = diskUsage(of: directory, stopAfter: limits.entries)
             stopReason = UpdateArchive.extractionProblem(bytes: usage.bytes, items: usage.items,
@@ -210,12 +235,14 @@ enum UpdateVerifier {
         }
         guard task.terminationStatus == 0 else {
             let text = (try? String(contentsOf: log, encoding: .utf8)) ?? ""
-            throw OnePercentError.extractFailed(text.trimmingCharacters(in: .whitespacesAndNewlines))
+            throw OnePercentError.extractFailed(clip(text.trimmingCharacters(in: .whitespacesAndNewlines)))
         }
     }
 
-    /// Regular-file bytes (the larger of logical and allocated size) and item count. Stops counting past `limit` items.
-    private static func diskUsage(of directory: URL, stopAfter limit: Int) -> (bytes: UInt64, items: Int) {
+    /// Bytes on disk (regular files: the larger of logical and allocated size; every item: its extended attributes)
+    /// and item count. Stops counting past `limit` items.
+    /// 2026-11-20 (PR #1 보안 리뷰 P3-3): 폴더에 붙은 확장 속성은 세지 않아, 12 MB 를 붙인 ZIP 이 5 MB 상한을 지났다.
+    static func diskUsage(of directory: URL, stopAfter limit: Int) -> (bytes: UInt64, items: Int) {
         let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey, .totalFileAllocatedSizeKey]
         guard let walker = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: keys, options: [],
                                                           errorHandler: { _, _ in true }) else { return (0, 0) }
@@ -224,10 +251,41 @@ enum UpdateVerifier {
         for case let url as URL in walker {
             items += 1
             if items > limit { break }
+            bytes &+= extendedAttributeBytes(url.path)
             guard let values = try? url.resourceValues(forKeys: Set(keys)), values.isRegularFile == true else { continue }
             bytes &+= UInt64(max(values.fileSize ?? 0, values.totalFileAllocatedSize ?? 0))
         }
         return (bytes, items)
+    }
+
+    /// The total size of an item's extended attributes (the item itself, not a link's target).
+    static func extendedAttributeBytes(_ path: String) -> UInt64 {
+        let length = listxattr(path, nil, 0, XATTR_NOFOLLOW)
+        guard length > 0 else { return 0 }
+        var names = [CChar](repeating: 0, count: length)
+        guard listxattr(path, &names, length, XATTR_NOFOLLOW) == length else { return 0 }
+        var total: UInt64 = 0
+        var start = 0
+        for index in 0..<length where names[index] == 0 {
+            let size = names.withUnsafeBufferPointer { buffer in
+                getxattr(path, buffer.baseAddress! + start, nil, 0, 0, XATTR_NOFOLLOW)
+            }
+            if size > 0 { total &+= UInt64(size) }
+            start = index + 1
+        }
+        return total
+    }
+
+    /// External text in messages and logs is cut short. 2026-11-20 (보안 리뷰 P3-7).
+    static func clip(_ text: String, _ limit: Int = 300) -> String {
+        text.count <= limit ? text : String(text.prefix(limit)) + "…"
+    }
+
+    static func normalizePermissions(of app: URL) throws {
+        for arguments in [["-R", "u-s,g-s,go-w", app.path], ["-RN", app.path]] {
+            let result = ProcessRunner.run("/bin/chmod", arguments)
+            guard result.status == 0 else { throw OnePercentError.extractFailed(clip(result.output)) }
+        }
     }
 
     static func stripQuarantine(at app: URL) {

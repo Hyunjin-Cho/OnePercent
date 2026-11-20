@@ -25,9 +25,14 @@ extension UserDefaults: OnePercentStore {}
 /// - Requests carry only `Accept`, `User-Agent` and a fixed `Accept-Language: en` (so the user's language list is not sent).
 /// - Background checks only announce. Installing always needs ``installAvailableUpdate()``.
 ///
+/// Your app must not refuse to quit (`applicationShouldTerminate` returning `.terminateCancel`) while an update reopens it.
+///
 /// 2026-11-20: 하늘키보드 `Updater`(2026-09-21 #19 — Sparkle 대신 직접 구현, 흐름은 exelban/stats 참고·코드는 새로 씀)를
 /// 설정·버전 규칙·문구·위치 정책을 바꿔 끼울 수 있게 일반화했다. Fable 리뷰로 고친 것: 실패가 "새 버전 있음"을 덮어쓰지 않음,
 /// 설치 파일 없는 새 태그는 확인 시각을 남기지 않음(다음 정시에 다시 확인), 내려받기 진행률·취소, 남은 staging 정리.
+/// 2026-11-20 (PR #1 코드 리뷰, Fable 5.2): 재실행 뒤 설치 버튼이 스스로 다시 확인 · 검증 중 취소 · 설치 파일 없는 태그를
+/// 최신 번호로 저장하지 않음 · 재실행 실패·종료 거부 뒤 상태 · 빌드 번호 판정 분리 · 설치 시작 틈의 suspend · 짝 없는 resume ·
+/// 첫 확인 취소 · 일정 여유 · 두 번째 noteLaunch.
 @MainActor
 @Observable
 public final class OnePercentUpdater {
@@ -47,32 +52,38 @@ public final class OnePercentUpdater {
     /// The last time GitHub was asked **successfully**. Failed attempts do not move it, so the next hourly tick tries again.
     public private(set) var lastCheck: Date?
     public private(set) var automaticChecksEnabled: Bool
-    /// The newest version seen on GitHub (stored across launches).
+    /// The newest installable version seen on GitHub (stored across launches). A tag whose ZIP is missing does not count.
     public private(set) var latestVersion: String?
     /// Set by ``noteLaunch()`` when this launch is the first one after an update: the new version.
     public private(set) var justUpdatedTo: String?
+    /// Set when this run already put a new version in place but did not reopen (it is installed; the running copy is old).
+    public private(set) var installedThisRun: String?
 
     public let configuration: OnePercentConfiguration
 
     /// Called when a check finds a new version that should be announced (automatic checks announce each version once).
     /// Show your own notice here. Installing does not start from this callback.
-    @ObservationIgnored public var onUpdateAvailable: ((AvailableUpdate) -> Void)?
+    @ObservationIgnored public var onUpdateAvailable: (@MainActor (AvailableUpdate) -> Void)?
     /// Asked right before downloading and again right before replacing. Return a short, localized reason to refuse
     /// (for example "A timer is running.") or `nil` to allow.
-    @ObservationIgnored public var installGuard: (() -> String?)?
-    /// Called after the new app is in place, right before the app reopens. Save state here.
-    @ObservationIgnored public var willRelaunch: (() -> Void)?
+    @ObservationIgnored public var installGuard: (@MainActor () -> String?)?
+    /// Called after the new app is in place, right before the app reopens. **Save state here** — the new copy starts
+    /// before this one's `applicationWillTerminate` runs.
+    @ObservationIgnored public var willRelaunch: (@MainActor () -> Void)?
 
     @ObservationIgnored private let store: OnePercentStore
-    @ObservationIgnored private let session: URLSession
+    @ObservationIgnored private let sessionConfiguration: URLSessionConfiguration
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private let gate: OperationGate
     @ObservationIgnored private let environment: Environment
     @ObservationIgnored private var timer: Timer?
+    @ObservationIgnored private var firstCheck: Task<Void, Never>?
     @ObservationIgnored private var busy = false
+    @ObservationIgnored private var installing = false
     @ObservationIgnored private var suspended = false
     @ObservationIgnored private var responseEpoch = 0
     @ObservationIgnored private var wasScheduled = false
+    @ObservationIgnored private var launchNoted = false
     @ObservationIgnored private var lastNotifiedVersion: String?
     @ObservationIgnored private var installTask: Task<Void, Never>?
     @ObservationIgnored private var lastReportedFraction: Double = -1
@@ -98,14 +109,15 @@ public final class OnePercentUpdater {
         lastCheck = store.object(forKey: keys.lastCheck) as? Date
         latestVersion = (store.object(forKey: keys.latestVersion) as? String).flatMap { configuration.versionScheme.isValid($0) ? $0 : nil }
         lastNotifiedVersion = store.object(forKey: keys.lastNotifiedVersion) as? String
-        self.session = session ?? URLSession(configuration: Self.sessionConfiguration())
+        sessionConfiguration = session?.configuration ?? Self.sessionConfiguration()
     }
 
-    /// Request settings: no disk cache, no cookies.
+    /// Request settings: no disk cache, no cookies. 30 s without data ends a request; a whole download may take an hour.
+    /// 2026-11-20 (리뷰 P3-13): 전체 제한 10분은 500 MiB 기본 상한과 맞지 않았다(느린 회선에서 항상 실패).
     nonisolated static func sessionConfiguration() -> URLSessionConfiguration {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 10 * 60
+        config.timeoutIntervalForResource = 60 * 60
         config.httpCookieAcceptPolicy = .never
         config.httpShouldSetCookies = false
         return config
@@ -114,17 +126,15 @@ public final class OnePercentUpdater {
     // MARK: - Stored values
 
     struct Keys {
-        let automaticChecks, lastCheck, latestVersion, lastNotifiedVersion, lastLaunchedVersion, testRepository, allowTestRepository: String
+        let automaticChecks, lastCheck, latestVersion, lastNotifiedVersion, lastLaunchedVersion: String
         init(_ prefix: String) {
             automaticChecks = prefix + "automaticChecks"
             lastCheck = prefix + "lastCheck"
             latestVersion = prefix + "latestVersion"
             lastNotifiedVersion = prefix + "lastNotifiedVersion"
             lastLaunchedVersion = prefix + "lastLaunchedVersion"
-            testRepository = prefix + "testRepository"
-            allowTestRepository = prefix + "allowTestRepository"
         }
-        var all: [String] { [automaticChecks, lastCheck, latestVersion, lastNotifiedVersion, lastLaunchedVersion, testRepository, allowTestRepository] }
+        var all: [String] { [automaticChecks, lastCheck, latestVersion, lastNotifiedVersion, lastLaunchedVersion] }
     }
 
     private var keys: Keys { Keys(configuration.defaultsKeyPrefix) }
@@ -134,7 +144,7 @@ public final class OnePercentUpdater {
         Keys(configuration.defaultsKeyPrefix).all
     }
 
-    /// Prefix of the work folders in the temporary directory.
+    /// Prefix of the work folders in the temporary directory (followed by a UUID).
     var workPrefix: String { "OnePercent-\(configuration.bundleIdentifier)-" }
 
     // MARK: - Versions
@@ -142,29 +152,36 @@ public final class OnePercentUpdater {
     /// The running app's public version (`CFBundleShortVersionString` plus the optional suffix key).
     public var currentVersion: String { environment.currentVersion(configuration) }
 
-    /// The repository being checked. Debug builds may point to a test repository when both
-    /// `<prefix>allowTestRepository` (true) and `<prefix>testRepository` (`owner/name`) are set. Release builds never do.
+    /// The repository being checked: ``OnePercentConfiguration/testRepository`` in debug builds when the app set it, otherwise
+    /// ``OnePercentConfiguration/repository``.
     var repository: String {
         #if DEBUG
-        if store.object(forKey: keys.allowTestRepository) as? Bool == true,
-           let override = store.object(forKey: keys.testRepository) as? String,
-           OnePercentConfiguration.isValidRepository(override) {
-            return override
-        }
+        if let test = configuration.testRepository, OnePercentConfiguration.isValidRepository(test) { return test }
         #endif
         return configuration.repository
     }
 
+    /// The configuration with ``repository`` filled in — what releases are matched against.
+    private var effectiveConfiguration: OnePercentConfiguration {
+        var effective = configuration
+        effective.repository = repository
+        return effective
+    }
+
     /// The release page for a version (for "What's new" after an update).
     public func releasePageURL(forVersion version: String) -> URL? {
-        var target = configuration
-        target.repository = repository
-        return ReleaseDecision.releasePageURL(tag: configuration.tagPrefix + version, configuration: target)
+        ReleaseDecision.releasePageURL(tag: configuration.tagPrefix + version, configuration: effectiveConfiguration)
+    }
+
+    /// The installed version as far as updates are concerned: what this run put in place, or the running version.
+    private var effectiveInstalledVersion: String { installedThisRun ?? currentVersion }
+
+    private var storedLatestIsNewer: Bool {
+        latestVersion.map { configuration.versionScheme.isNewer($0, than: effectiveInstalledVersion) } ?? false
     }
 
     public var presentation: UpdateStatusPresentation {
-        let storedLatestIsNewer = latestVersion.map { configuration.versionScheme.isNewer($0, than: currentVersion) } ?? false
-        return .resolve(phase: phase, error: lastError, storedLatestIsNewer: storedLatestIsNewer)
+        .resolve(phase: phase, error: lastError, storedLatestIsNewer: storedLatestIsNewer)
     }
 
     // MARK: - Settings
@@ -177,13 +194,21 @@ public final class OnePercentUpdater {
 
     /// Call once at launch. Records the running version, reports whether this launch follows an update, and removes
     /// leftovers of an interrupted update. Returns the new version when this launch follows an update.
+    /// Calling it again in the same run returns the same answer without recording anything.
     @discardableResult
     public func noteLaunch() -> String? {
         guard !suspended else { return nil }
+        guard !launchNoted else { return justUpdatedTo }
+        launchNoted = true
         let current = currentVersion
+        // 2026-11-20 (리뷰 P3-11): 실행 중인 버전을 규칙이 못 읽으면 어떤 릴리스도 새것이 아니다 — 조용히 넘기지 않고 알린다.
+        guard configuration.versionScheme.isValid(current) else {
+            lastError = .badConfiguration("the running version \"\(current)\" is not a \(configuration.versionScheme.name) version")
+            return nil
+        }
         let updated = UpdateDecision.justUpdatedVersion(current: current, lastLaunched: store.object(forKey: keys.lastLaunchedVersion) as? String,
                                                         configuration: configuration)
-        if configuration.versionScheme.isValid(current) { store.set(current, forKey: keys.lastLaunchedVersion) }
+        store.set(current, forKey: keys.lastLaunchedVersion)
         justUpdatedTo = updated
         let installed = environment.runningBundleURL()
         let prefix = workPrefix
@@ -202,34 +227,47 @@ public final class OnePercentUpdater {
     public func startAutomaticChecks() {
         guard timer == nil, !suspended else { return }
         wasScheduled = true
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(15))
+        firstCheck = Task { [weak self] in
+            try? await Task.sleep(for: self?.environment.firstCheckDelay ?? .seconds(15))
+            guard !Task.isCancelled else { return }
             await self?.checkNow(userInitiated: false)
         }
-        timer = Timer.scheduledTimer(withTimeInterval: 60 * 60, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 60 * 60, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in await self?.checkNow(userInitiated: false) }
         }
+        timer.tolerance = 5 * 60
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     public func stopAutomaticChecks() {
         timer?.invalidate()
         timer = nil
+        firstCheck?.cancel()
+        firstCheck = nil
         wasScheduled = false
     }
 
     /// Pauses all checking and writing — for example while your app removes its own data. Late responses are ignored.
-    /// Returns `false` (and does nothing) while downloading, verifying or installing.
+    /// Returns `false` (and does nothing) while an install is starting or running.
     public func suspend() -> Bool {
+        // 2026-11-20 (리뷰 P2-7): 설치를 시작한 직후(아직 phase 가 .available)에도 거절한다.
+        guard !installing else { return false }
         switch phase { case .downloading, .verifying, .installing: return false; default: break }
         suspended = true
         responseEpoch += 1
         timer?.invalidate()
         timer = nil
+        firstCheck?.cancel()
+        firstCheck = nil
         if phase == .checking { phase = .idle }
         return true
     }
 
+    /// Ends a ``suspend()``. Does nothing when not suspended.
     public func resume() {
+        // 2026-11-20 (리뷰 P2-8): 짝 없는 resume 이 진행 중인 확인의 응답을 버려 .checking 에 멈췄다.
+        guard suspended else { return }
         suspended = false
         responseEpoch += 1
         if wasScheduled { startAutomaticChecks() }
@@ -253,35 +291,43 @@ public final class OnePercentUpdater {
         busy = true
         defer { busy = false }
         let known: AvailableUpdate? = if case .available(let update) = phase { update } else { nil }
+        let restore: Phase = known.map(Phase.available) ?? .idle
         phase = .checking
         lastError = nil
         let epoch = responseEpoch
         do {
             let release = try await fetchLatestRelease()
-            guard epoch == responseEpoch, !suspended else { return }
-            guard let releaseVersion = ReleaseDecision.version(fromTag: release.tag, configuration: configuration) else {
-                throw OnePercentError.malformedResponse
+            guard epoch == responseEpoch, !suspended else {
+                if phase == .checking { phase = restore }
+                return
             }
-            let current = currentVersion
-            if let update = ReleaseDecision.availableUpdate(currentVersion: current, release: release, configuration: configuration) {
+            guard let releaseVersion = ReleaseDecision.version(fromTag: release.tag, configuration: configuration) else {
+                // 2026-11-20 (리뷰 P3-11): 태그 꼴이 설정과 안 맞는 건 서버 고장이 아니라 설정 문제다.
+                throw OnePercentError.badConfiguration("tag \"\(release.tag)\" is not a \(configuration.versionScheme.name) version "
+                                                       + "with tag prefix \"\(configuration.tagPrefix)\"")
+            }
+            let installed = effectiveInstalledVersion
+            if let update = ReleaseDecision.availableUpdate(currentVersion: installed, release: release, configuration: effectiveConfiguration) {
                 recordSuccessfulCheck(latest: releaseVersion)
                 phase = .available(update)
-                onePercentLog.notice("update available: \(update.tag, privacy: .public) (installed \(current, privacy: .public))")
+                onePercentLog.notice("update available: \(update.tag, privacy: .public) (installed \(installed, privacy: .public))")
                 announce(update, userInitiated: userInitiated, showNotice: showNotice)
-            } else if configuration.versionScheme.isNewer(releaseVersion, than: current) {
+            } else if configuration.versionScheme.isNewer(releaseVersion, than: installed) {
                 // 2026-11-20 (Fable 리뷰): 새 태그는 있는데 받을 파일이 아직 없다. 확인 시각을 남기면 다음 주기(최대 한 달)까지 다시 묻지 않으므로
-                // 남기지 않는다 — 다음 정시 틱에 다시 확인한다. 최신 번호는 보여 주되 "최신 버전"이라고 하지 않는다.
-                latestVersion = releaseVersion
-                store.set(releaseVersion, forKey: keys.latestVersion)
-                phase = known.map(Phase.available) ?? .idle
+                // 남기지 않는다 — 다음 정시 틱에 다시 확인한다.
+                // 2026-11-20 (PR #1 리뷰 P2-4): 최신 번호로도 저장하지 않는다. 저장하면 설치할 수 없는 버전의 설치 버튼이 재실행 뒤에도 남았다.
+                phase = restore
                 lastError = .assetNotReady(releaseVersion)
             } else {
                 recordSuccessfulCheck(latest: releaseVersion)
                 phase = .upToDate
             }
         } catch {
-            guard epoch == responseEpoch, !suspended else { return }
-            phase = known.map(Phase.available) ?? .idle
+            guard epoch == responseEpoch, !suspended else {
+                if phase == .checking { phase = restore }
+                return
+            }
+            phase = restore
             lastError = Self.describe(error)
             onePercentLog.error("check failed: \(self.lastError?.code ?? "?", privacy: .public)")
         }
@@ -314,17 +360,17 @@ public final class OnePercentUpdater {
     private func fetchLatestRelease() async throws -> ReleaseInfo {
         let repository = repository
         guard let url = ReleaseDecision.latestReleaseURL(repository: repository) else { throw OnePercentError.badConfiguration("repository") }
-        let received = try await UpdateTransport.receive(request(for: url), configuration: session.configuration,
+        let received = try await UpdateTransport.receive(request(for: url), configuration: sessionConfiguration,
                                                          limit: configuration.limits.maxMetadataBytes,
                                                          allowedHosts: configuration.allowedHosts)
-        let (data, http) = (received.data, received.response)
+        let http = received.response
         switch http.statusCode {
         case 200:
-            guard let release = ReleaseDecision.parseRelease(data, allowedHosts: configuration.allowedHosts) else {
+            guard let release = ReleaseDecision.parseRelease(received.data, allowedHosts: configuration.allowedHosts) else {
                 throw OnePercentError.malformedResponse
             }
             return release
-        case 300...399: throw OnePercentError.redirectBlocked(http.value(forHTTPHeaderField: "Location") ?? "?")
+        case 300...399: throw OnePercentError.redirectBlocked(ReleaseDecision.display(http.value(forHTTPHeaderField: "Location")))
         case 404: throw OnePercentError.noRelease(repository)
         case 403, 429: throw OnePercentError.rateLimited
         default: throw OnePercentError.httpStatus(http.statusCode)
@@ -345,11 +391,20 @@ public final class OnePercentUpdater {
 
     // MARK: - Install
 
-    /// Downloads, verifies and installs the available update, then reopens the app. Does nothing unless ``phase`` is `.available`.
+    /// Downloads, verifies and installs the available update, then reopens the app.
+    /// After a relaunch only the stored latest version is known (``UpdateStatusPresentation/installRechecksFirst``);
+    /// this then asks GitHub again first and continues if the update is still there.
     /// On failure the update stays available and ``lastError`` says why. If even restoring the old app failed, the error
     /// names the backup and where it belongs.
     public func installAvailableUpdate() async {
-        guard case .available(let update) = phase, !busy, !suspended else { return }
+        // 2026-11-20 (리뷰 P1-2): 다시 켠 뒤 보이는 설치 버튼이 아무 일도 하지 않았다. 여기서 스스로 다시 확인한다.
+        if phase == .idle, storedLatestIsNewer, !busy, !suspended {
+            await checkNow(userInitiated: true, showNotice: false)
+        }
+        guard case .available(let update) = phase, !busy, !suspended, !installing else { return }
+        // 2026-11-20 (리뷰 P2-7): 맨 처음부터 "설치 중"으로 표시해, 시작 직후의 suspend() 를 거절한다.
+        installing = true
+        defer { installing = false }
         if let reason = installGuard?() { lastError = .blocked(reason); return }
         guard configuration.problems.isEmpty else {
             lastError = .badConfiguration(configuration.problems.joined(separator: "; "))
@@ -357,13 +412,12 @@ public final class OnePercentUpdater {
         }
         guard let token = gate.begin("OnePercent.update") else { lastError = .busy; return }
         busy = true
+        defer { busy = false; gate.finish(token) }
         lastError = nil
         let task = Task { await self.performInstall(update) }
         installTask = task
         await task.value
         installTask = nil
-        busy = false
-        gate.finish(token)
     }
 
     /// Stops a download or verification in progress. Once replacing has begun it cannot be cancelled.
@@ -387,8 +441,14 @@ public final class OnePercentUpdater {
         case .success(let path):
             target = URL(fileURLWithPath: path)
         }
+        // 2026-11-20 오너 결정(A): 관리자 경로가 꺼져 있으면 내려받기 전에 알린다(받아 놓고 못 쓰지 않게).
+        if environment.strategy(target) == .adminPrompt, !configuration.allowsAdministratorInstall {
+            lastError = .administratorInstallDisabled
+            return
+        }
         let workDir = environment.temporaryDirectory.appendingPathComponent(workPrefix + UUID().uuidString, isDirectory: true)
         defer { try? fm.removeItem(at: workDir) }
+        var placed = false
         do {
             try fm.createDirectory(at: workDir, withIntermediateDirectories: true)
             lastReportedFraction = -1
@@ -402,9 +462,10 @@ public final class OnePercentUpdater {
                                              currentVersion: currentVersion, currentBuild: environment.currentBuild(),
                                              releaseVersion: update.version)
             let checks = environment.checks
-            let verified = try await Task.detached(priority: .userInitiated) {
-                try UpdateVerifier.extractAndVerify(input, checks: checks)
-            }.value
+            // 2026-11-20 (리뷰 P2-3): detached 작업은 부모의 취소를 물려받지 않는다 — 취소를 직접 넘긴다.
+            // 검증 쪽은 풀기 감시 루프와 검사 사이에서 취소를 본다.
+            let verification = Task.detached(priority: .userInitiated) { try UpdateVerifier.extractAndVerify(input, checks: checks) }
+            let verified = try await withTaskCancellationHandler { try await verification.value } onCancel: { verification.cancel() }
             try Task.checkCancellation()
             onePercentLog.notice("update \(update.tag, privacy: .public) verified")
             // 내려받는 동안 앱 상태가 바뀌었을 수 있다(예: 타이머 시작). 바꾸기 직전에 한 번 더 묻는다.
@@ -413,6 +474,8 @@ public final class OnePercentUpdater {
             phase = .installing
             let requirement = UpdateDecision.codeRequirement(bundleIdentifier: configuration.bundleIdentifier, team: configuration.teamIdentifier)
             switch environment.strategy(target) {
+            case .adminPrompt where !configuration.allowsAdministratorInstall:
+                throw OnePercentError.administratorInstallDisabled
             case .userAtomic:
                 let verifyCopy = environment.verifyCopy
                 try await Task.detached(priority: .userInitiated) {
@@ -426,9 +489,10 @@ public final class OnePercentUpdater {
                     backup: target.deletingLastPathComponent().appendingPathComponent(".\(target.lastPathComponent).old-\(token)"),
                     identity: verified.identity, requirement: requirement)
                 if let notice = try environment.adminReplace(script), !notice.isEmpty {
-                    onePercentLog.notice("administrator replacement: \(notice, privacy: .public)")
+                    onePercentLog.notice("administrator replacement: \(notice, privacy: .private)")
                 }
             }
+            placed = true
             onePercentLog.notice("update \(update.tag, privacy: .public) installed — reopening")
             // 재실행은 앱을 끝내므로 defer 가 돌지 않는다. 먼저 지운다(2026-11-07 하늘키보드 #176 F-7).
             try? fm.removeItem(at: workDir)
@@ -436,27 +500,35 @@ public final class OnePercentUpdater {
             try await environment.relaunch(target)
         } catch {
             let described = Self.describe(error)
-            // 새 앱은 이미 제자리에 있는데 다시 열지만 못했다 — 같은 버전을 또 설치하라고 권하지 않는다.
-            if case .relaunchFailed = described { phase = .idle } else { phase = .available(update) }
+            if placed {
+                // 2026-11-20 (리뷰 P2-5): 새 앱은 이미 제자리에 있다(다시 열지 못했거나, 앱이 종료를 거부했다).
+                // 같은 버전을 또 설치하라고 권하지 않도록 이 실행에서 설치한 버전을 기억한다.
+                installedThisRun = update.version
+                phase = .idle
+            } else {
+                phase = .available(update)
+            }
             lastError = described
             onePercentLog.error("install failed: \(described.code, privacy: .public)")
         }
     }
 
     private func download(_ asset: ReleaseAsset, to destination: URL) async throws {
+        // 2026-11-20 (리뷰 P3-14): 1% 걸러내기를 전송 쪽에서 해 청크마다 메인 액터 작업을 만들지 않는다.
+        // Content-Length 가 없으면 API 의 자산 크기를 쓴다.
+        let throttle = ProgressThrottle(fallbackTotal: asset.size > 0 ? Int64(asset.size) : nil)
         let progress: UpdateTransport.Progress = { [weak self] received, expected in
-            guard let expected, expected > 0 else { return }
-            let fraction = Double(received) / Double(expected)
+            guard let fraction = throttle.next(received: received, expected: expected) else { return }
             Task { @MainActor [weak self] in self?.reportProgress(fraction) }
         }
-        let received = try await UpdateTransport.receive(request(for: asset.downloadURL), configuration: session.configuration,
+        let received = try await UpdateTransport.receive(request(for: asset.downloadURL), configuration: sessionConfiguration,
                                                          limit: configuration.limits.maxAssetBytes,
                                                          allowedHosts: configuration.allowedHosts,
                                                          destination: destination, progress: progress)
         let http = received.response
         guard http.statusCode == 200 else {
             if (300...399).contains(http.statusCode) {
-                throw OnePercentError.redirectBlocked(http.value(forHTTPHeaderField: "Location") ?? "?")
+                throw OnePercentError.redirectBlocked(ReleaseDecision.display(http.value(forHTTPHeaderField: "Location")))
             }
             throw OnePercentError.httpStatus(http.statusCode)
         }
@@ -470,7 +542,7 @@ public final class OnePercentUpdater {
     private func reportProgress(_ fraction: Double) {
         guard case .downloading = phase else { return }
         let clamped = min(max(fraction, 0), 1)
-        guard clamped - lastReportedFraction >= 0.01 || clamped == 1 else { return }
+        guard clamped > lastReportedFraction else { return }
         lastReportedFraction = clamped
         phase = .downloading(fraction: clamped)
     }
@@ -478,8 +550,30 @@ public final class OnePercentUpdater {
     static func describe(_ error: Error) -> OnePercentError {
         if let error = error as? OnePercentError { return error }
         if error is CancellationError { return .cancelled }
-        if let error = error as? URLError, error.code == .cancelled { return .cancelled }
+        if let error = error as? URLError { return error.code == .cancelled ? .cancelled : .network(error.localizedDescription) }
+        // 2026-11-20 (리뷰 P3-12): 디스크 가득 참·폴더 만들기 실패 같은 파일 오류를 "네트워크 오류"로 부르지 않는다.
+        let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain || nsError.domain == NSPOSIXErrorDomain { return .fileSystem(nsError.localizedDescription) }
         return .network(error.localizedDescription)
+    }
+}
+
+/// Forwards download progress only when it moved by at least 1 %. Thread-safe; called on the transfer queue.
+final class ProgressThrottle: @unchecked Sendable {
+    private let lock = NSLock()
+    private var last: Double = -1
+    private let fallbackTotal: Int64?
+
+    init(fallbackTotal: Int64?) { self.fallbackTotal = fallbackTotal }
+
+    func next(received: Int64, expected: Int64?) -> Double? {
+        guard let total = expected ?? fallbackTotal, total > 0 else { return nil }
+        let fraction = min(Double(received) / Double(total), 1)
+        return lock.withLock {
+            guard fraction - last >= 0.01 || (fraction == 1 && last < 1) else { return nil }
+            last = fraction
+            return fraction
+        }
     }
 }
 
@@ -497,6 +591,8 @@ extension OnePercentUpdater {
         var verifyCopy: (@Sendable (URL, VerifiedIdentity) -> Bool)?
         var adminReplace: @MainActor (AdminReplacementScript) throws -> String?
         var relaunch: @MainActor (URL) async throws -> Void
+        /// The wait before the first background check after ``OnePercentUpdater/startAutomaticChecks()``.
+        var firstCheckDelay: Duration = .seconds(15)
 
         static var live: Environment {
             Environment(
@@ -539,6 +635,8 @@ extension OnePercentUpdater {
                         }
                     }
                     NSApp.terminate(nil)
+                    // 2026-11-20 (리뷰 P2-5b): terminate 가 돌아왔다 = 앱이 종료를 거부했다. 새 앱은 이미 떠 있다.
+                    throw OnePercentError.quitCancelled
                 })
         }
     }

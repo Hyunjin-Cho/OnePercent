@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "无法放置新应用，已将原来的应用恢复到原位置。";
 "error.replaceRecoveryFailed" = "替换应用失败，也未能自动恢复。原来应用的备份已保留。\n备份：%1$@\n恢复到：%2$@\n请用访达的“前往文件夹”找到备份，并以原来的名称放回原位置（需要管理员权限）。\n（%3$@）";
 "error.relaunchFailed" = "新版本已安装，但无法重新打开应用。请手动打开应用。（%@）";
+"error.quitCancelled" = "新版本已打开，但之前的应用没有退出。请手动退出之前的应用。";
+"error.fileSystem" = "文件操作失败 — %@";
+"error.administratorInstallDisabled" = "此位置的应用需要管理员密码才能替换，因此没有在应用内安装。请从发布页面下载新版本并手动替换。";
 "archive.unreadable" = "无法读取 ZIP 列表";
 "archive.empty" = "压缩文件为空";
 "archive.tooManyEntries" = "项目过多（%1$@ 个，最多 %2$@ 个）";
@@ -68,6 +71,8 @@
 "verify.codesign" = "代码签名检查失败";
 "verify.notarization" = "Apple 公证检查失败";
 "verify.notHigher" = "版本不高于当前版本";
+"verify.buildNotHigher" = "构建号（CFBundleVersion）不高于当前版本";
+"verify.buildUnreadable" = "无法读取构建号（CFBundleVersion）";
 "verify.releaseMismatch" = "下载的应用版本（%1$@）与通知的新版本（%2$@）不同";
 "verify.unknownValue" = "无法读取";
 "verify.unreadable" = "无法读取版本信息";

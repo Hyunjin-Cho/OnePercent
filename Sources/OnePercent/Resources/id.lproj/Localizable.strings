@@ -51,6 +51,9 @@
 "error.placeFailedRestored" = "App baru tidak dapat dipasang, jadi app sebelumnya dikembalikan.";
 "error.replaceRecoveryFailed" = "Penggantian app gagal dan tidak dapat dipulihkan otomatis. Cadangan app sebelumnya tetap disimpan.\nCadangan: %1$@\nPulihkan ke: %2$@\nGunakan “Buka Folder” di Finder untuk menemukan cadangan, lalu kembalikan ke tempatnya dengan nama aslinya (memerlukan administrator).\n(%3$@)";
 "error.relaunchFailed" = "Versi baru sudah terinstal, tetapi app tidak dapat terbuka lagi. Silakan buka sendiri. (%@)";
+"error.quitCancelled" = "Versi baru sudah terbuka, tetapi salinan app sebelumnya tidak keluar. Silakan keluarkan sendiri.";
+"error.fileSystem" = "Operasi file gagal — %@";
+"error.administratorInstallDisabled" = "Salinan app ini hanya dapat diganti dengan kata sandi administrator, jadi tidak diinstal dari dalam app. Unduh versi baru dari halaman rilis, lalu ganti app sendiri.";
 "archive.unreadable" = "daftar ZIP tidak dapat dibaca";
 "archive.empty" = "arsip kosong";
 "archive.tooManyEntries" = "terlalu banyak item (%1$@, maks. %2$@)";
@@ -68,6 +71,8 @@
 "verify.codesign" = "pemeriksaan tanda tangan kode gagal";
 "verify.notarization" = "pemeriksaan notarisasi Apple gagal";
 "verify.notHigher" = "versi tidak lebih baru dari yang terinstal";
+"verify.buildNotHigher" = "nomor build (CFBundleVersion) tidak lebih tinggi dari yang terinstal";
+"verify.buildUnreadable" = "nomor build (CFBundleVersion) tidak dapat dibaca";
 "verify.releaseMismatch" = "versi yang diunduh (%1$@) bukan versi yang diumumkan (%2$@)";
 "verify.unknownValue" = "tidak terbaca";
 "verify.unreadable" = "versi tidak dapat dibaca";

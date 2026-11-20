@@ -98,13 +98,46 @@ import Testing
         #expect(Set(escaping) == ["/Contents/out", "/Contents/abs"], "\(escaping)")
     }
 
+    /// 2026-11-20 (보안 리뷰 P3-2): 결합 문자가 `..` 를 한 글자로 묶어도 바이트로 보면 거부한다.
+    @Test func combiningCharactersCannotHideDotDot() {
+        let hidden = "TestApp.app/a\u{600}/../../\u{301}b"
+        #expect(hidden.split(separator: "/").contains("..") == false, "premise: Swift characters hide the .. part")
+        #expect(!UpdateArchive.isInsideApp(hidden, appFolder: "TestApp.app"))
+        #expect(!UpdateArchive.staysInside(linkAt: "Contents/x", destination: "a\u{600}/../../\u{301}b"))
+        #expect(UpdateArchive.isInsideApp("TestApp.app/Contents/Resources/한글 파일.txt", appFolder: "TestApp.app"), "normal non-ASCII names pass")
+    }
+
+    /// 2026-11-20 (보안 리뷰 P3-4): 링크가 많아도 목록 검사는 금방 끝난다.
+    @Test func manyLinksStayFast() {
+        var entries: [ZipEntry] = []
+        for i in 0..<8_000 { entries.append(ZipEntry(name: "TestApp.app/l\(i)", uncompressedSize: 1, isSymbolicLink: true)) }
+        for i in 0..<8_000 { entries.append(ZipEntry(name: "TestApp.app/d/f\(i)", uncompressedSize: 1)) }
+        let started = Date()
+        #expect(UpdateArchive.problem(entries, limits: .standard, appFolder: "TestApp.app") == nil)
+        #expect(Date().timeIntervalSince(started) < 1, "\(Date().timeIntervalSince(started)) s")
+    }
+
+    /// 2026-11-20 (보안 리뷰 P3-3): 폴더의 확장 속성도 디스크 사용량으로 센다.
+    @Test func extendedAttributesCount() throws {
+        let root = try Fixture.temporaryRoot("xattr")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = root.appendingPathComponent("TestApp.app/Contents")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let value = [UInt8](repeating: 7, count: 200_000)
+        #expect(setxattr(folder.path, "com.example.big", value, value.count, 0, 0) == 0)
+        let usage = UpdateVerifier.diskUsage(of: root, stopAfter: 100)
+        #expect(usage.bytes >= 200_000, "\(usage.bytes)")
+    }
+
     @Test func lexicalLinkResolution() {
         let inside: [(String, String)] = [("Contents/Frameworks/K.framework/Versions/Current", "A"),
                                           ("Contents/Frameworks/K.framework/K", "Versions/Current/K"),
                                           ("Contents/a", "../Contents/b"), ("Contents/a", "./b"), ("Contents/a", ".."), ("x", ".")]
         for (link, destination) in inside { #expect(UpdateArchive.staysInside(linkAt: link, destination: destination), "\(link) → \(destination)") }
         let outside: [(String, String)] = [("Contents/a", "../.."), ("x", ".."), ("Contents/a", "/Applications"), ("Contents/a", ""),
-                                           ("Contents/a", "b/../../../c")]
+                                           ("Contents/a", "b/../../../c"),
+                                           // 2026-11-20 보안 리뷰 P3-1: 링크 뒤의 `..` (a/b/c/s 가 ../../.. 링크일 때 실제로는 앱 밖)
+                                           ("t", "a/b/c/s/../../../victim"), ("Contents/a", "b/../c")]
         for (link, destination) in outside { #expect(!UpdateArchive.staysInside(linkAt: link, destination: destination), "\(link) → \(destination)") }
     }
 }

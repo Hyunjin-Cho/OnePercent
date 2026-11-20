@@ -42,6 +42,32 @@ import Testing
         #expect(log.all.count == 3 && log.all.allSatisfy { $0.hasSuffix("/extract/TestApp.app") }, "signature checks run on the extracted app only")
     }
 
+    /// 2026-11-20 (보안 리뷰 P2-1): ZIP 이 정한 그룹·다른 사용자 쓰기 권한과 ACL 은 설치 전에 벗긴다.
+    @Test func permissionsFromTheZipAreNotKept() throws {
+        let root = try Fixture.temporaryRoot("modes")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fm = FileManager.default
+        let (result, _) = try attempt(in: root, "loose", version: "1.1", tag: "1.1") { archive in
+            let app = try Fixture.makeApp(archive.deletingLastPathComponent().appendingPathComponent("l/TestApp.app"), version: "1.1", build: "999")
+            let file = app.appendingPathComponent("Contents/MacOS/TestApp")
+            try fm.setAttributes([.posixPermissions: 0o777], ofItemAtPath: file.path)
+            try fm.setAttributes([.posixPermissions: 0o777], ofItemAtPath: app.appendingPathComponent("Contents").path)
+            #expect(Fixture.tool("/bin/chmod", ["+a", "group:everyone allow write,delete,append", file.path]) == 0)
+            #expect(Fixture.zip(app, to: archive))
+        }
+        let app = try result.get().app
+        for path in [app.appendingPathComponent("Contents/MacOS/TestApp").path, app.appendingPathComponent("Contents").path] {
+            let mode = (try fm.attributesOfItem(atPath: path)[.posixPermissions] as? Int) ?? 0o777
+            #expect(mode & 0o022 == 0, "\(path): \(String(mode, radix: 8))")
+        }
+        let listing = Process(), out = Pipe()
+        listing.executableURL = URL(fileURLWithPath: "/bin/ls")
+        listing.arguments = ["-le", app.appendingPathComponent("Contents/MacOS/TestApp").path]
+        listing.standardOutput = out
+        try listing.run(); listing.waitUntilExit()
+        #expect(!String(decoding: out.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self).contains(" allow "), "no ACL left")
+    }
+
     @Test func refusesWrongVersionsAndSignatures() throws {
         let root = try Fixture.temporaryRoot("refuse")
         defer { try? FileManager.default.removeItem(at: root) }
@@ -249,19 +275,27 @@ import Testing
         let apps = root.appendingPathComponent("Applications")
         let tmp = root.appendingPathComponent("tmp")
         let installed = try Fixture.makeApp(apps.appendingPathComponent("TestApp.app"), version: "1.0", build: "1")
-        try fm.createDirectory(at: apps.appendingPathComponent(".TestApp.app.onepercent-1234"), withIntermediateDirectories: true)
-        try fm.createDirectory(at: apps.appendingPathComponent(".Other.app.onepercent-1234"), withIntermediateDirectories: true)
-        try fm.createDirectory(at: apps.appendingPathComponent(".TestApp.app.old-5678"), withIntermediateDirectories: true)
-        try fm.createDirectory(at: tmp.appendingPathComponent("OnePercent-com.example.testapp-AAAA"), withIntermediateDirectories: true)
-        try fm.createDirectory(at: tmp.appendingPathComponent("OnePercent-com.example.other-BBBB"), withIntermediateDirectories: true)
+        let id = { UUID().uuidString }
+        let ours = ".TestApp.app.onepercent-" + id(), otherApp = ".Other.app.onepercent-" + id(), backup = ".TestApp.app.old-" + id()
+        for name in [ours, otherApp, backup, ".TestApp.app.onepercent-notauuid"] {
+            try fm.createDirectory(at: apps.appendingPathComponent(name), withIntermediateDirectories: true)
+        }
+        let work = "OnePercent-com.example.testapp-" + id(), otherWork = "OnePercent-com.example.other-" + id()
+        // 2026-11-20 (리뷰): 접두어가 같은 다른 번들(`com.example.testapp-helper`)의 작업 폴더는 지우지 않는다.
+        let helper = "OnePercent-com.example.testapp-helper-" + id()
+        for name in [work, otherWork, helper] { try fm.createDirectory(at: tmp.appendingPathComponent(name), withIntermediateDirectories: true) }
         let target = root.appendingPathComponent("keep")
         try fm.createDirectory(at: target, withIntermediateDirectories: true)
-        try fm.createSymbolicLink(at: tmp.appendingPathComponent("OnePercent-com.example.testapp-LINK"), withDestinationURL: target)
-        let removed = UpdateReplacement.removeLeftovers(installedApp: installed, workPrefix: "OnePercent-com.example.testapp-", temporaryDirectory: tmp)
+        let link = "OnePercent-com.example.testapp-" + id()
+        try fm.createSymbolicLink(at: tmp.appendingPathComponent(link), withDestinationURL: target)
+        #expect(UpdateReplacement.removeLeftovers(installedApp: installed, workPrefix: "OnePercent-com.example.testapp-", temporaryDirectory: tmp) == 0,
+                "fresh items (another instance may be updating right now) stay")
+        let removed = UpdateReplacement.removeLeftovers(installedApp: installed, workPrefix: "OnePercent-com.example.testapp-",
+                                                        temporaryDirectory: tmp, olderThan: 0)
         #expect(removed == 2)
-        #expect(Set(try fm.contentsOfDirectory(atPath: apps.path)) == ["TestApp.app", ".Other.app.onepercent-1234", ".TestApp.app.old-5678"],
-                "another app's staging and the administrator backup stay")
-        #expect(Set(try fm.contentsOfDirectory(atPath: tmp.path)) == ["OnePercent-com.example.other-BBBB", "OnePercent-com.example.testapp-LINK"])
+        #expect(Set(try fm.contentsOfDirectory(atPath: apps.path)) == ["TestApp.app", otherApp, backup, ".TestApp.app.onepercent-notauuid"],
+                "another app's staging, the administrator backup and non-UUID names stay")
+        #expect(Set(try fm.contentsOfDirectory(atPath: tmp.path)) == [otherWork, helper, link])
         #expect(fm.fileExists(atPath: target.path), "links are never followed or removed")
     }
 }

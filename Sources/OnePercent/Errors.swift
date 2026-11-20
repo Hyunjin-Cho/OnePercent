@@ -35,6 +35,12 @@ public enum OnePercentError: Error, Equatable, Sendable {
     case placeFailedRestored
     case replaceRecoveryFailed(reason: String, backupPath: String, destinationPath: String)
     case relaunchFailed(String)
+    /// The new version opened, but this copy of the app refused to quit (`applicationShouldTerminate`).
+    case quitCancelled
+    /// A file operation failed (for example a full disk).
+    case fileSystem(String)
+    /// Replacing this copy needs an administrator password, and ``OnePercentConfiguration/allowsAdministratorInstall`` is off.
+    case administratorInstallDisabled
 
     /// A stable identifier, for logs and tests.
     public var code: String {
@@ -66,6 +72,9 @@ public enum OnePercentError: Error, Equatable, Sendable {
         case .placeFailedRestored: "placeFailedRestored"
         case .replaceRecoveryFailed: "replaceRecoveryFailed"
         case .relaunchFailed: "relaunchFailed"
+        case .quitCancelled: "quitCancelled"
+        case .fileSystem: "fileSystem"
+        case .administratorInstallDisabled: "administratorInstallDisabled"
         }
     }
 }
@@ -104,6 +113,9 @@ extension OnePercentError: LocalizedError {
         case .replaceRecoveryFailed(let reason, let backup, let destination):
             t.text("error.replaceRecoveryFailed", backup, destination, reason)
         case .relaunchFailed(let reason): t.text("error.relaunchFailed", reason)
+        case .quitCancelled: t.text("error.quitCancelled")
+        case .fileSystem(let reason): t.text("error.fileSystem", reason)
+        case .administratorInstallDisabled: t.text("error.administratorInstallDisabled")
         }
     }
 }
@@ -115,6 +127,10 @@ public enum VerificationFailure: Equatable, Sendable {
     case codeSignatureInvalid
     case notarizationRejected
     case versionNotHigher
+    /// `CFBundleVersion` did not increase.
+    case buildNotHigher
+    /// `CFBundleVersion` of the running or the downloaded app could not be read as a build number.
+    case buildUnreadable
     case releaseMismatch(bundleVersion: String?, releaseVersion: String)
     case versionUnreadable
     case notARealFolder
@@ -127,6 +143,8 @@ public enum VerificationFailure: Equatable, Sendable {
         case .codeSignatureInvalid: t.text("verify.codesign")
         case .notarizationRejected: t.text("verify.notarization")
         case .versionNotHigher: t.text("verify.notHigher")
+        case .buildNotHigher: t.text("verify.buildNotHigher")
+        case .buildUnreadable: t.text("verify.buildUnreadable")
         case .releaseMismatch(let bundle, let release): t.text("verify.releaseMismatch", bundle ?? t.text("verify.unknownValue"), release)
         case .versionUnreadable: t.text("verify.unreadable")
         case .notARealFolder: t.text("verify.notFolder")
