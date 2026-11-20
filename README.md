@@ -145,7 +145,7 @@ GitHub로 가는 HTTPS `GET` 요청뿐입니다(릴리스 정보는 `api.github.
 
 ## 저장하는 값
 
-`UserDefaults`(또는 직접 넘긴 저장소)에 다음을 저장합니다: 자동 확인을 켰는지, 마지막으로 성공한 확인, 설치할 수 있었던 최신 버전, 마지막으로 알린 버전, 마지막으로 실행한 버전. `OnePercentUpdater.storedKeys(configuration:)`가 모든 키를 알려 주므로, 앱이 스스로를 초기화할 때 지울 수 있습니다.
+`UserDefaults`(또는 직접 넘긴 저장소)에 다음을 저장합니다: 자동 확인을 켰는지, 마지막으로 성공한 확인, 설치할 수 있었던 최신 버전, 마지막으로 알린 버전, 마지막으로 실행한 버전. `OnePercentUpdater.storedKeys(configuration:)`가 모든 키를 알려 주므로, 앱이 스스로를 초기화할 때 지울 수 있습니다. 앱을 지우는 기능이 있다면 `OnePercentUpdater.removeLeftovers(configuration:olderThan: 0)`로 업데이트가 남긴 흔적도 함께 치우세요.
 
 ## 알려진 한계
 
@@ -315,7 +315,7 @@ Only HTTPS `GET` requests to GitHub (`api.github.com` for the release, `github.c
 
 ## Stored values
 
-In `UserDefaults` (or a store you pass): whether background checks are on, the last successful check, the latest installable version seen, the last announced version and the last launched version. `OnePercentUpdater.storedKeys(configuration:)` lists every key, so your app can remove them when it resets itself.
+In `UserDefaults` (or a store you pass): whether background checks are on, the last successful check, the latest installable version seen, the last announced version and the last launched version. `OnePercentUpdater.storedKeys(configuration:)` lists every key, so your app can remove them when it resets itself. If your app can remove itself, call `OnePercentUpdater.removeLeftovers(configuration:olderThan: 0)` too, to clear what an interrupted update left behind.
 
 ## Known gaps
 

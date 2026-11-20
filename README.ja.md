@@ -141,7 +141,7 @@ GitHub への HTTPS の `GET` リクエストだけです（リリース情報�
 
 ## 保存する値
 
-`UserDefaults`（または渡したストア）に次を保存します: 自動確認をオンにしているか、最後に成功した確認、インストールできた最新バージョン、最後に知らせたバージョン、最後に起動したバージョン。`OnePercentUpdater.storedKeys(configuration:)` がすべてのキーを返すので、アプリが自分を初期化するときに消せます。
+`UserDefaults`（または渡したストア）に次を保存します: 自動確認をオンにしているか、最後に成功した確認、インストールできた最新バージョン、最後に知らせたバージョン、最後に起動したバージョン。`OnePercentUpdater.storedKeys(configuration:)` がすべてのキーを返すので、アプリが自分を初期化するときに消せます。アプリに自分を削除する機能があるなら、`OnePercentUpdater.removeLeftovers(configuration:olderThan: 0)` でアップデートが残した跡も一緒に片付けてください。
 
 ## 既知の制限
 

@@ -147,6 +147,20 @@ public final class OnePercentUpdater {
     /// Prefix of the work folders in the temporary directory (followed by a UUID).
     var workPrefix: String { "OnePercent-\(configuration.bundleIdentifier)-" }
 
+    /// Removes what an interrupted update left behind — the hidden staging copy next to the app and the work folders in
+    /// the temporary directory. Only this app's items (by name, ending in a UUID), owned by this user, never links.
+    /// ``noteLaunch()`` already does this at launch for items older than ten minutes; call this from your app's own
+    /// "remove the app" feature with `olderThan: 0`. Returns how many items were removed.
+    /// 2026-11-20: PomoLight 의 삭제 기능이 앱을 휴지통으로 옮길 때 옆에 남은 숨은 사본까지 치우려고 공개했다.
+    @discardableResult
+    public nonisolated static func removeLeftovers(configuration: OnePercentConfiguration,
+                                                   installedApp: URL = Bundle.main.bundleURL,
+                                                   olderThan minimumAge: TimeInterval = 10 * 60) -> Int {
+        UpdateReplacement.removeLeftovers(installedApp: installedApp,
+                                          workPrefix: "OnePercent-\(configuration.bundleIdentifier)-",
+                                          olderThan: minimumAge)
+    }
+
     // MARK: - Versions
 
     /// The running app's public version (`CFBundleShortVersionString` plus the optional suffix key).
