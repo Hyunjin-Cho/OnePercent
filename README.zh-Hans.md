@@ -141,7 +141,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 
 ## 保存的值
 
-在 `UserDefaults`（或你传入的存储）中保存：是否开启自动检查、最后一次成功的检查、可安装的最新版本、最后通知过的版本、最后启动的版本。`OnePercentUpdater.storedKeys(configuration:)` 会列出所有键，应用重置自身时可以删除它们。
+在 `UserDefaults`（或你传入的存储）中保存：是否开启自动检查、最后一次成功的检查、可安装的最新版本、最后通知过的版本、最后启动的版本。`OnePercentUpdater.storedKeys(configuration:)` 会列出所有键，应用重置自身时可以删除它们。如果应用有删除自身的功能，也请调用 `OnePercentUpdater.removeLeftovers(configuration:olderThan: 0)`，一并清理更新留下的痕迹。
 
 ## 已知限制
 

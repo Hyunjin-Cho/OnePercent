@@ -267,6 +267,18 @@ import Testing
         #expect(!UpdateReplacement.isIntactCopy(at: copy, identity: identity, requirement: requirement), "real codesign refuses an unsigned copy")
     }
 
+    /// The public entry point an app's own uninstaller calls.
+    @Test func publicLeftoverCleanup() throws {
+        let root = try Fixture.temporaryRoot("public-leftovers")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let installed = try Fixture.makeApp(root.appendingPathComponent("Applications/TestApp.app"), version: "1.0", build: "1")
+        let staging = root.appendingPathComponent("Applications/.TestApp.app.onepercent-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+        #expect(OnePercentUpdater.removeLeftovers(configuration: Fixture.configuration(), installedApp: installed) == 0, "fresh: kept")
+        #expect(OnePercentUpdater.removeLeftovers(configuration: Fixture.configuration(), installedApp: installed, olderThan: 0) >= 1)
+        #expect(!FileManager.default.fileExists(atPath: staging.path))
+    }
+
     /// 2026-11-20 (Fable 리뷰 4): 강제 종료로 남은 staging·작업 폴더를 다음 실행에 치운다 — 이 앱 것, 이 사용자 것, 링크 아닌 것만.
     @Test func removesOnlyOurLeftovers() throws {
         let root = try Fixture.temporaryRoot("leftovers")
