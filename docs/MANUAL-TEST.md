@@ -23,8 +23,8 @@ Automated tests cover everything except what needs a real signature, a real pass
 | 4 | Cancel the password prompt | As 2, press Cancel in the prompt. | "The update was cancelled." The old app still opens. | |
 | 4b | Administrator path off (default) | As 2 but with `allowsAdministratorInstall = false`. | "…can only be replaced with an administrator password…" before anything is downloaded. | |
 | 5 | Cancel a download | Throttle the network (Network Link Conditioner), Install, then Cancel. | "The update was cancelled." Install stays available. | |
-| 6 | Force quit while downloading | Install, force quit during the download. Reopen. | Nothing left in `$TMPDIR` after the reopen (removed at launch). | |
-| 7 | Force quit while replacing (user path) | Install, force quit right after "Installing…". Reopen. | The app opens (old or new); no `.<App>.app.onepercent-*` left next to it after the reopen. | |
+| 6 | Force quit while downloading | Install, force quit during the download. Reopen **after 10 minutes** (younger leftovers are kept in case another copy is updating). | Nothing left in `$TMPDIR` after the reopen (removed at launch). | |
+| 7 | Force quit while replacing (user path) | Install, force quit right after "Installing…". Reopen after 10 minutes. | The app opens (old or new); no `.<App>.app.onepercent-*` left next to it after the reopen. | |
 | 8 | Translocated | Download the old app's ZIP with a browser, open it from Downloads without moving it. Install. | "macOS is running the app from a temporary location…" | |
 | 9 | Disk image | Run the old app from a mounted DMG. Install. | "…read-only disk…" | |
 | 10 | Wrong signer | Upload a ZIP of the app signed with another Team (or ad-hoc). Install. | Refused: "…isn't signed by the expected team, the code signature check failed…". Old app untouched. | |
