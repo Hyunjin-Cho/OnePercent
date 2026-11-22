@@ -190,6 +190,15 @@ public final class OnePercentUpdater {
     /// The installed version as far as updates are concerned: what this run put in place, or the running version.
     private var effectiveInstalledVersion: String { installedThisRun ?? currentVersion }
 
+    /// The error to report when the version scheme cannot read the running version, or `nil` when it can.
+    /// Nothing is newer than an unreadable version, so a check could only ever answer "up to date".
+    /// 2026-11-22 (#6): noteLaunch() 만 이 오류를 냈고, 첫 확인이 오류를 지우고 "최신"으로 기록했다 — 둘이 같은 판단을 쓴다.
+    private var unreadableRunningVersion: OnePercentError? {
+        let current = currentVersion
+        guard !configuration.versionScheme.isValid(current) else { return nil }
+        return .badConfiguration("the running version \"\(current)\" is not a \(configuration.versionScheme.name) version")
+    }
+
     private var storedLatestIsNewer: Bool {
         latestVersion.map { configuration.versionScheme.isNewer($0, than: effectiveInstalledVersion) } ?? false
     }
@@ -216,8 +225,8 @@ public final class OnePercentUpdater {
         launchNoted = true
         let current = currentVersion
         // 2026-11-20 (리뷰 P3-11): 실행 중인 버전을 규칙이 못 읽으면 어떤 릴리스도 새것이 아니다 — 조용히 넘기지 않고 알린다.
-        guard configuration.versionScheme.isValid(current) else {
-            lastError = .badConfiguration("the running version \"\(current)\" is not a \(configuration.versionScheme.name) version")
+        if let problem = unreadableRunningVersion {
+            lastError = problem
             return nil
         }
         let updated = UpdateDecision.justUpdatedVersion(current: current, lastLaunched: store.object(forKey: keys.lastLaunchedVersion) as? String,
@@ -300,6 +309,11 @@ public final class OnePercentUpdater {
             lastCheck: lastCheck, now: now(), forced: userInitiated) else { return }
         guard configuration.problems.isEmpty else {
             lastError = .badConfiguration(configuration.problems.joined(separator: "; "))
+            return
+        }
+        // 2026-11-22 (#6): 묻지 않는다. 물으면 "최신"으로 기록돼 오류가 사라지고, 한 달 일정이면 다음 달까지 조용했다.
+        if let problem = unreadableRunningVersion {
+            lastError = problem
             return
         }
         busy = true
