@@ -2,11 +2,9 @@
 
 # OnePercent
 
-**한국어** · [English](#english) · [日本語](README.ja.md) · [简体中文](README.zh-Hans.md) · [繁體中文](README.zh-Hant.md)
+**한국어** · [English](#english) · [日本語](#japanese) · [简体中文](#chinese-simplified) · [繁體中文](#chinese-traditional)
 
 > **기준일:** 2026-11-22 · 0.1.0 · 관리자 암호가 필요한 설치는 실제 Mac에서 확인할 때까지 기본으로 꺼져 있습니다.
-
-<!-- 한 판을 고치면 다섯 판(README.md 의 한국어·영어 + README.ja.md·README.zh-Hans.md·README.zh-Hant.md)을 같이 고친다. -->
 
 GitHub Releases로 배포하는 macOS 앱의 앱 안 업데이트 부품입니다. 사용자가 [설치]를 눌렀을 때만 내려받고, 내 팀의 Developer ID 서명·Apple 공증·번들 ID·버전과 빌드 번호 상승을 모두 통과해야 앱을 바꿉니다.
 
@@ -63,11 +61,13 @@ MIT — [LICENSE](LICENSE)
 
 ---
 
+---
+
 <a id="english"></a>
 
 # OnePercent — English
 
-[한국어](#korean) · **English** · [日本語](README.ja.md) · [简体中文](README.zh-Hans.md) · [繁體中文](README.zh-Hant.md)
+[한국어](#korean) · **English** · [日本語](#japanese) · [简体中文](#chinese-simplified) · [繁體中文](#chinese-traditional)
 
 > **As of:** 2026-11-22 · 0.1.0 · Installs that need an administrator password are off by default until tried on a real Mac.
 
@@ -123,3 +123,194 @@ If it passes, publish a GitHub release with tag `1.2` and attach the ZIP.
 - Only HTTPS `GET` requests to GitHub. Headers: `Accept`, `User-Agent`, fixed `Accept-Language: en`. No cookies, no disk cache.
 
 MIT — [LICENSE](LICENSE)
+
+---
+
+<a id="japanese"></a>
+
+# OnePercent — 日本語
+
+[한국어](#korean) · [English](#english) · **日本語** · [简体中文](#chinese-simplified) · [繁體中文](#chinese-traditional)
+
+> **基準日：** 2026-11-22 · 0.1.0 · 管理者パスワードが必要なインストールは、実機で確認するまで既定でオフです。
+
+GitHub Releases で配布する macOS アプリのための、小さなアプリ内アップデート部品です。ユーザーが［インストール］を押したときだけダウンロードし、あなたのチームの Developer ID 署名・Apple 公証・バンドル ID・バージョンとビルド番号の上昇をすべて通過した場合にだけアプリを置き換えます。
+
+## 必要なもの
+
+- macOS 14 以降、Swift 6（Xcode 16 以降）
+- **Developer ID** で署名し、**公証**を受けたアプリ
+- リリースごとに、バージョンと同じタグ（`1.2` — `v1.2` なら `tagPrefix: "v"`）、`<アプリ名>_<タグ>.zip` 1 つ、上げた `CFBundleVersion`
+- アップデートがアプリを再起動する間、`applicationShouldTerminate` で `.terminateCancel` を返さないこと
+
+## 追加する
+
+```swift
+.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.0"))
+```
+
+## 使う
+
+```swift
+import OnePercent
+
+let updater = OnePercentUpdater(configuration: OnePercentConfiguration(
+    repository: "you/YourApp", teamIdentifier: "ABCDE12345",
+    bundleIdentifier: "com.example.yourapp", appName: "YourApp"))
+
+updater.noteLaunch()   // 起動時に 1 回。アップデート直後なら新しいバージョンを返します
+updater.onUpdateAvailable = { update in /* 独自の通知を表示。ここではインストールしない */ }
+updater.willRelaunch = { /* 保存はここで — 新しいアプリは applicationWillTerminate より先に起動します */ }
+updater.startAutomaticChecks()
+
+// 設定画面: await updater.checkNow() · ［インストール］ボタン: await updater.installAvailableUpdate()
+```
+
+画面は `updater.presentation` と `OnePercentText`（29 言語）で作ります。その他の設定は [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift) のドキュメントコメントにあります。
+
+## リリースを作る
+
+```sh
+ditto -c -k --keepParent YourApp.app YourApp_1.2.zip   # Finder の［圧縮］は __MACOSX が入り、拒否されることがあります
+swift run --package-path /path/to/OnePercent onepercent-check \
+    --zip YourApp_1.2.zip --tag 1.2 --repository you/YourApp \
+    --team ABCDE12345 --bundle-id com.example.yourapp --app-name YourApp \
+    --previous-version 1.1 --previous-build 7
+```
+
+通過したら、タグ `1.2` で GitHub リリースを公開し、ZIP を添付します。
+
+## 知っておくこと
+
+- ユーザーが書き込めない場所のアプリは、既定ではアプリ内でインストールせず、リリースページへ案内します（`allowsAdministratorInstall`、実機での確認前 — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)）。
+- GitHub への HTTPS `GET` のみ送ります。ヘッダーは `Accept`・`User-Agent`・固定の `Accept-Language: en` で、Cookie・ディスクキャッシュは使いません。
+
+MIT — [LICENSE](LICENSE)
+
+---
+
+<a id="chinese-simplified"></a>
+
+# OnePercent — 简体中文
+
+[한국어](#korean) · [English](#english) · [日本語](#japanese) · **简体中文** · [繁體中文](#chinese-traditional)
+
+> **基准日：** 2026-11-22 · 0.1.0 · 需要管理员密码的安装在真机上验证之前默认关闭。
+
+为通过 GitHub Releases 分发的 macOS 应用准备的小型应用内更新组件。只有用户点击［安装］时才会下载，并且只有通过你团队的 Developer ID 签名、Apple 公证、Bundle ID、版本号与构建号提升的全部检查，才会替换应用。
+
+## 需要什么
+
+- macOS 14 或更高版本，Swift 6（Xcode 16 或更高版本）
+- 使用 **Developer ID** 签名并通过**公证**的应用
+- 每个发布：与版本相同的标签（`1.2` — 若为 `v1.2`，设置 `tagPrefix: "v"`）、一个 `<应用名>_<标签>.zip`、提高后的 `CFBundleVersion`
+- 更新重新打开应用期间，`applicationShouldTerminate` 不要返回 `.terminateCancel`
+
+## 添加
+
+```swift
+.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.0"))
+```
+
+## 使用
+
+```swift
+import OnePercent
+
+let updater = OnePercentUpdater(configuration: OnePercentConfiguration(
+    repository: "you/YourApp", teamIdentifier: "ABCDE12345",
+    bundleIdentifier: "com.example.yourapp", appName: "YourApp"))
+
+updater.noteLaunch()   // 启动时调用一次。刚更新完时返回新版本
+updater.onUpdateAvailable = { update in /* 显示你自己的通知。不要在这里安装 */ }
+updater.willRelaunch = { /* 需要保存的内容在这里保存 — 新应用会先于 applicationWillTerminate 启动 */ }
+updater.startAutomaticChecks()
+
+// 设置界面: await updater.checkNow() · ［安装］按钮: await updater.installAvailableUpdate()
+```
+
+界面由 `updater.presentation` 和 `OnePercentText`（29 种语言）构建。其他设置见 [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift) 的文档注释。
+
+## 制作发布
+
+```sh
+ditto -c -k --keepParent YourApp.app YourApp_1.2.zip   # Finder 的［压缩］可能加入 __MACOSX 而被拒绝
+swift run --package-path /path/to/OnePercent onepercent-check \
+    --zip YourApp_1.2.zip --tag 1.2 --repository you/YourApp \
+    --team ABCDE12345 --bundle-id com.example.yourapp --app-name YourApp \
+    --previous-version 1.1 --previous-build 7
+```
+
+通过后，用标签 `1.2` 发布 GitHub Release 并附上 ZIP。
+
+## 注意事项
+
+- 用户无法写入位置的应用，默认不在应用内安装，而是引导用户到发布页面（`allowsAdministratorInstall`，尚未在真机验证 — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)）。
+- 只向 GitHub 发送 HTTPS `GET` 请求。请求头为 `Accept`、`User-Agent` 和固定的 `Accept-Language: en`，不使用 Cookie 和磁盘缓存。
+
+MIT — [LICENSE](LICENSE)
+
+---
+
+<a id="chinese-traditional"></a>
+
+# OnePercent — 繁體中文
+
+[한국어](#korean) · [English](#english) · [日本語](#japanese) · [简体中文](#chinese-simplified) · **繁體中文**
+
+> **基準日：** 2026-11-22 · 0.1.0 · 需要管理者密碼的安裝在實機驗證之前預設關閉。
+
+為透過 GitHub Releases 發佈的 macOS App 準備的小型 App 內更新元件。只有使用者按下［安裝］時才會下載，並且只有通過你團隊的 Developer ID 簽章、Apple 公證、Bundle ID、版本號與建置號提升的全部檢查，才會取代 App。
+
+## 需要什麼
+
+- macOS 14 或更新版本，Swift 6（Xcode 16 或更新版本）
+- 使用 **Developer ID** 簽章並通過**公證**的 App
+- 每個發佈：與版本相同的標籤（`1.2` — 若為 `v1.2`，設定 `tagPrefix: "v"`）、一個 `<App 名稱>_<標籤>.zip`、提高後的 `CFBundleVersion`
+- 更新重新開啟 App 期間，`applicationShouldTerminate` 不要回傳 `.terminateCancel`
+
+## 加入
+
+```swift
+.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.0"))
+```
+
+## 使用
+
+```swift
+import OnePercent
+
+let updater = OnePercentUpdater(configuration: OnePercentConfiguration(
+    repository: "you/YourApp", teamIdentifier: "ABCDE12345",
+    bundleIdentifier: "com.example.yourapp", appName: "YourApp"))
+
+updater.noteLaunch()   // 啟動時呼叫一次。剛更新完時回傳新版本
+updater.onUpdateAvailable = { update in /* 顯示你自己的通知。不要在這裡安裝 */ }
+updater.willRelaunch = { /* 需要儲存的內容在這裡儲存 — 新 App 會先於 applicationWillTerminate 啟動 */ }
+updater.startAutomaticChecks()
+
+// 設定畫面: await updater.checkNow() · ［安裝］按鈕: await updater.installAvailableUpdate()
+```
+
+畫面由 `updater.presentation` 和 `OnePercentText`（29 種語言）建構。其他設定見 [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift) 的文件註解。
+
+## 製作發佈
+
+```sh
+ditto -c -k --keepParent YourApp.app YourApp_1.2.zip   # Finder 的［壓縮］可能加入 __MACOSX 而被拒絕
+swift run --package-path /path/to/OnePercent onepercent-check \
+    --zip YourApp_1.2.zip --tag 1.2 --repository you/YourApp \
+    --team ABCDE12345 --bundle-id com.example.yourapp --app-name YourApp \
+    --previous-version 1.1 --previous-build 7
+```
+
+通過後，用標籤 `1.2` 發佈 GitHub Release 並附上 ZIP。
+
+## 注意事項
+
+- 使用者無法寫入位置的 App，預設不在 App 內安裝，而是引導使用者到發佈頁面（`allowsAdministratorInstall`，尚未在實機驗證 — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)）。
+- 只向 GitHub 傳送 HTTPS `GET` 請求。標頭為 `Accept`、`User-Agent` 和固定的 `Accept-Language: en`，不使用 Cookie 與磁碟快取。
+
+MIT — [LICENSE](LICENSE)
+
+<!-- 한 판을 고치면 다섯 판(이 파일 안의 5개 섹션)을 같이 고친다. -->
