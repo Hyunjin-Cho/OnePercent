@@ -196,7 +196,9 @@ public final class OnePercentUpdater {
     private var unreadableRunningVersion: OnePercentError? {
         let current = currentVersion
         guard !configuration.versionScheme.isValid(current) else { return nil }
-        return .badConfiguration("the running version \"\(current)\" is not a \(configuration.versionScheme.name) version")
+        // 2026-11-22 (#23): 접미어 키를 쓰면 그 키도 짚어 준다 — 깨진 값은 대개 그 키에 있다.
+        let hint = configuration.versionSuffixInfoKey.map { " (CFBundleShortVersionString + Info.plist key \($0))" } ?? ""
+        return .badConfiguration("the running version \"\(current)\"\(hint) is not a \(configuration.versionScheme.name) version")
     }
 
     private var storedLatestIsNewer: Bool {
@@ -631,11 +633,7 @@ extension OnePercentUpdater {
 
         static var live: Environment {
             Environment(
-                currentVersion: { configuration in
-                    let info = Bundle.main.infoDictionary
-                    return UpdateDecision.bundleVersion(info: info, configuration: configuration)
-                        ?? (info?["CFBundleShortVersionString"] as? String) ?? "0"
-                },
+                currentVersion: { UpdateDecision.runningVersion(info: Bundle.main.infoDictionary, configuration: $0) },
                 currentBuild: { Bundle.main.infoDictionary?["CFBundleVersion"] as? String },
                 runningBundleURL: { Bundle.main.bundleURL },
                 applicationsDirectory: "/Applications",

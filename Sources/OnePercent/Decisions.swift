@@ -57,6 +57,18 @@ enum UpdateDecision {
         return configuration.versionScheme.isValid(text) ? text : nil
     }
 
+    /// The running app's version for update decisions. Never `nil`, but never hides a broken suffix either: when the suffix
+    /// key has a value that is not text, or the suffixed text is not valid in the scheme, the result stays unreadable so
+    /// the updater reports `badConfiguration` instead of quietly using the version without the suffix.
+    /// 2026-11-22 (#23): 예전엔 접미어 없는 CFBundleShortVersionString 으로 대체해 유효한 버전처럼 보였다 — #6 의 검사도 지나쳤고,
+    /// 지금 돌고 있는 핫픽스 자신이 '새 버전'으로 안내됐다(설치는 빌드 번호 검사에서 계속 거부).
+    static func runningVersion(info: [String: Any]?, configuration: OnePercentConfiguration) -> String {
+        if let version = bundleVersion(info: info, configuration: configuration) { return version }
+        let short = info?["CFBundleShortVersionString"] as? String ?? "0"
+        guard let key = configuration.versionSuffixInfoKey, let raw = info?[key] else { return short }
+        return short + ((raw as? String) ?? " (\(key) is not text)")
+    }
+
     /// Build numbers (`CFBundleVersion`): one to four dot-separated parts of up to 18 digits, so date-time builds such as
     /// `202611201530` work. 2026-11-20 (리뷰 P2-6): 예전엔 버전 규칙(마디당 9자리)으로 읽어 12자리 빌드가 늘 거부됐다.
     static let buildScheme = VersionScheme(name: "build") { text in

@@ -91,6 +91,24 @@ import Testing
         #expect(UpdateDecision.bundleVersion(info: [:], configuration: config) == nil)
     }
 
+    /// 2026-11-22 (#23): 접미어가 깨졌으면 접미어 없는 버전으로 대체하지 않는다 — 못 읽는 버전으로 남아 설정 오류로 알려진다.
+    @Test func runningVersionNeverHidesABrokenSuffix() {
+        let calendar = Fixture.configuration(scheme: .calendar(), suffixKey: "ReleaseSuffix")
+        func running(_ info: [String: Any], _ c: OnePercentConfiguration? = nil) -> String {
+            UpdateDecision.runningVersion(info: info, configuration: c ?? calendar)
+        }
+        #expect(running(["CFBundleShortVersionString": "2026.11.17", "ReleaseSuffix": "_hotfix2"]) == "2026.11.17_hotfix2")
+        #expect(running(["CFBundleShortVersionString": "2026.11.17"]) == "2026.11.17", "no suffix value: the plain version")
+        #expect(running(["CFBundleShortVersionString": "2026.11.17", "ReleaseSuffix": ""]) == "2026.11.17", "an empty suffix")
+        for broken: [String: Any] in [["CFBundleShortVersionString": "2026.11.17", "ReleaseSuffix": 3],
+                                      ["CFBundleShortVersionString": "2026.11.17", "ReleaseSuffix": "_hotfix0"]] {
+            let version = running(broken)
+            #expect(!calendar.versionScheme.isValid(version), "\(version) must stay unreadable")
+        }
+        #expect(running(["CFBundleShortVersionString": "1.2"], config) == "1.2")
+        #expect(running([:], config) == "0")
+    }
+
     @Test func versionAndBuildMustBothIncrease() {
         func increase(_ cv: String, _ cb: String?, _ nv: String?, _ nb: String?, _ c: OnePercentConfiguration? = nil) -> Bool {
             UpdateDecision.isVersionIncrease(currentVersion: cv, currentBuild: cb, newVersion: nv, newBuild: nb, configuration: c ?? config)

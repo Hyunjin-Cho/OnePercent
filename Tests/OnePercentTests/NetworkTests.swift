@@ -773,6 +773,22 @@ import Testing
         #expect(broken.noteLaunch() == nil && broken.lastError?.code == "badConfiguration", "a running version the scheme cannot read is reported")
     }
 
+    /// 2026-11-22 (#23): 접미어 키를 쓰는 앱에서 접미어가 깨졌으면, 지금 돌고 있는 핫픽스를 새 버전으로 안내하지 않고 오류가 그 키를 짚는다.
+    @Test func aBrokenSuffixNamesItsKey() async {
+        NetworkStub.reset()
+        let h = Harness()
+        let configuration = Fixture.configuration(scheme: .calendar(), suffixKey: "ReleaseSuffix")
+        h.version = UpdateDecision.runningVersion(info: ["CFBundleShortVersionString": "2026.11.17", "ReleaseSuffix": 3],
+                                                  configuration: configuration)
+        let updater = h.make(configuration)
+        #expect(updater.noteLaunch() == nil)
+        respond("2026.11.17_hotfix1")
+        await updater.checkNow()
+        #expect(updater.lastError?.code == "badConfiguration" && apiCount == 0)
+        #expect(updater.lastError?.localizedDescription.contains("ReleaseSuffix") == true, "\(String(describing: updater.lastError))")
+        #expect(h.notices.isEmpty && !updater.presentation.showsInstallButton, "the running hotfix is not offered as new")
+    }
+
     /// 2026-11-22 (#6): 예전엔 첫 확인이 이 오류를 지우고 "최신"으로 기록했다(확인 시각까지 남겨 다음 달까지 조용).
     @Test func unreadableRunningVersionIsNeverUpToDate() async {
         NetworkStub.reset()
