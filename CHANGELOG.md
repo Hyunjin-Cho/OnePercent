@@ -2,6 +2,11 @@
 
 > **기준일:** 2026-11-22 · Versions are Git tags (SwiftPM reads them directly). Newest first.
 
+## Unreleased
+
+### Project
+- The GitHub Actions workflow is removed — owner decision 2026-11-22: OnePercent goes without CI. The test fixes from [#11](https://github.com/Hyunjin-Cho/OnePercent/pull/11) stay; run `swift test` (and `swift test --build-system native`) by hand. ([#13](https://github.com/Hyunjin-Cho/OnePercent/issues/13))
+
 ## 0.1.1 — 2026-11-22
 
 ### Fixed
