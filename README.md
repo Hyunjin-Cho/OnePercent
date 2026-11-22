@@ -15,6 +15,7 @@ GitHub Releases로 배포하는 macOS 앱의 앱 안 업데이트 부품입니�
 - **공개** GitHub 저장소 — 로그인 없이 묻기 때문에 비공개 저장소는 "릴리스를 찾을 수 없어요"로 끝납니다
 - App Sandbox를 켜지 않은 앱 — 샌드박스 앱은 자기 옆에 새 사본을 놓을 수 없습니다
 - 릴리스마다 버전과 같은 태그(`1.2` — `v1.2` 꼴이면 `tagPrefix: "v"`), `<앱이름>_<태그>.zip` 하나, 올린 `CFBundleVersion`
+- 앱 이름에 영문·숫자·`.`·`-`·`_` 말고 다른 글자(악센트·한글·공백 등)가 있으면 GitHub가 올린 파일 이름을 바꿉니다 — `assetName`으로 영문 이름을 정하세요
 - 업데이트가 앱을 다시 여는 동안 `applicationShouldTerminate`에서 `.terminateCancel`을 돌려주지 않기
 
 ## 추가하기
@@ -83,6 +84,7 @@ A small in-app updater for macOS apps that ship through GitHub Releases. It down
 - A **public** GitHub repository — OnePercent asks without signing in, so a private one ends in "No release was found".
 - No App Sandbox — a sandboxed app cannot place the new copy next to itself.
 - Each release: a tag equal to the version (`1.2` — for `v1.2` set `tagPrefix: "v"`), one ZIP named `<YourApp>_<tag>.zip`, and a raised `CFBundleVersion`.
+- If your app's name has anything but ASCII letters, digits, `.`, `-` and `_` (accents, Hangul, spaces…), GitHub renames the uploaded file — set `assetName` to a plain name.
 - While an update reopens your app, `applicationShouldTerminate` must not return `.terminateCancel`.
 
 ## Add it
@@ -149,6 +151,7 @@ GitHub Releases で配布する macOS アプリのための、小さなアプリ
 - **公開**の GitHub リポジトリ — ログインせずに問い合わせるため、非公開リポジトリは「リリースが見つかりません」で終わります
 - App Sandbox を使わないアプリ — サンドボックス化したアプリは、自分の隣に新しいコピーを置けません
 - リリースごとに、バージョンと同じタグ（`1.2` — `v1.2` なら `tagPrefix: "v"`）、`<アプリ名>_<タグ>.zip` 1 つ、上げた `CFBundleVersion`
+- アプリ名に英数字・`.`・`-`・`_` 以外の文字（アクセント・ハングル・空白など）があると GitHub がアップロードしたファイル名を変えます — `assetName` で英数字の名前を指定してください
 - アップデートがアプリを再起動する間、`applicationShouldTerminate` で `.terminateCancel` を返さないこと
 
 ## 追加する
@@ -215,6 +218,7 @@ MIT — [LICENSE](LICENSE)
 - **公开**的 GitHub 仓库 — 检查时不登录，私有仓库只会得到“找不到发布版本”
 - 不启用 App Sandbox 的应用 — 沙盒应用无法把新副本放在自己旁边
 - 每个发布：与版本相同的标签（`1.2` — 若为 `v1.2`，设置 `tagPrefix: "v"`）、一个 `<应用名>_<标签>.zip`、提高后的 `CFBundleVersion`
+- 应用名如果含有英文字母、数字、`.`、`-`、`_` 以外的字符（重音字母、韩文、空格等），GitHub 会改掉上传的文件名 — 请用 `assetName` 指定英文名称
 - 更新重新打开应用期间，`applicationShouldTerminate` 不要返回 `.terminateCancel`
 
 ## 添加
@@ -281,6 +285,7 @@ MIT — [LICENSE](LICENSE)
 - **公開**的 GitHub 儲存庫 — 檢查時不登入，私人儲存庫只會得到「找不到發佈版本」
 - 不啟用 App Sandbox 的 App — 沙盒 App 無法把新副本放在自己旁邊
 - 每個發佈：與版本相同的標籤（`1.2` — 若為 `v1.2`，設定 `tagPrefix: "v"`）、一個 `<App 名稱>_<標籤>.zip`、提高後的 `CFBundleVersion`
+- App 名稱如果含有英文字母、數字、`.`、`-`、`_` 以外的字元（重音字母、韓文、空白等），GitHub 會改掉上傳的檔名 — 請用 `assetName` 指定英文名稱
 - 更新重新開啟 App 期間，`applicationShouldTerminate` 不要回傳 `.terminateCancel`
 
 ## 加入

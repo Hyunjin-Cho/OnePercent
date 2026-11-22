@@ -68,6 +68,31 @@ import Testing
         #expect(!String(decoding: out.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self).contains(" allow "), "no ACL left")
     }
 
+    /// 2026-11-22 (#18): 실제 ditto ZIP — 한글·악센트 이름 앱이 목록 검사부터 검증까지 통과한다(설정은 NFC, ZIP 은 NFD).
+    @Test func composedAppNameThroughThePipeline() throws {
+        let root = try Fixture.temporaryRoot("composed")
+        defer { try? FileManager.default.removeItem(at: root) }
+        for name in ["닦아", "Caf\u{E9}"] {
+            var configuration = Fixture.configuration()
+            configuration.appName = name.precomposedStringWithCanonicalMapping
+            configuration.assetName = { "App_\($0).zip" }
+            #expect(configuration.problems.isEmpty, "\(configuration.problems)")
+            let folder = root.appendingPathComponent(UUID().uuidString)
+            let app = try Fixture.makeApp(folder.appendingPathComponent("src/\(configuration.appName).app"), version: "1.1", build: "999")
+            let zip = folder.appendingPathComponent("update.zip")
+            #expect(Fixture.zip(app, to: zip))
+            let first = (Fixture.parse([UInt8](try Data(contentsOf: zip))) ?? []).first?.name ?? ""
+            #expect(Array(first.utf8) == Array((configuration.appName + ".app/").decomposedStringWithCanonicalMapping.utf8),
+                    "premise: ditto stores \(name) decomposed")
+            let work = folder.appendingPathComponent("work")
+            try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
+            let input = UpdateVerifier.Input(zip: zip, workDir: work, configuration: configuration, currentVersion: "1.0",
+                                             currentBuild: "100", releaseVersion: "1.1")
+            let verified = try UpdateVerifier.extractAndVerify(input, checks: .accepting)
+            #expect(verified.identity.version == "1.1" && verified.identity.build == "999", "\(name)")
+        }
+    }
+
     @Test func refusesWrongVersionsAndSignatures() throws {
         let root = try Fixture.temporaryRoot("refuse")
         defer { try? FileManager.default.removeItem(at: root) }

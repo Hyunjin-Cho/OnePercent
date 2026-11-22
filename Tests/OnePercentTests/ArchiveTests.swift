@@ -108,6 +108,20 @@ import Testing
         #expect(UpdateArchive.isInsideApp("TestApp.app/Contents/Resources/한글 파일.txt", appFolder: "TestApp.app"), "normal non-ASCII names pass")
     }
 
+    /// 2026-11-22 (#18): ZIP 안 이름(NFD)과 appName(NFC)이 형태가 달라도 같은 폴더로 본다. `..` 거부는 그대로다.
+    @Test func composedAppNamesMatchEitherForm() {
+        for name in ["Caf\u{E9}", "닦아", "ガイド"] {
+            let nfc = name.precomposedStringWithCanonicalMapping, nfd = name.decomposedStringWithCanonicalMapping
+            #expect(Array(nfc.utf8) != Array(nfd.utf8), "premise: \(name) has two forms")
+            for (entry, configured) in [(nfd, nfc), (nfc, nfd), (nfd, nfd), (nfc, nfc)] {
+                #expect(UpdateArchive.isInsideApp(entry + ".app/Contents/Info.plist", appFolder: configured + ".app"), "\(name)")
+                #expect(!UpdateArchive.isInsideApp(entry + ".app/../x", appFolder: configured + ".app"), "\(name): .. still refused")
+                #expect(!UpdateArchive.isInsideApp(entry + ".app", appFolder: configured + ".app"), "\(name): the folder entry needs its slash")
+            }
+            #expect(!UpdateArchive.isInsideApp(nfd + "x.app/Contents/Info.plist", appFolder: nfc + ".app"), "\(name): another name")
+        }
+    }
+
     /// 2026-11-20 (보안 리뷰 P3-4): 링크가 많아도 목록 검사는 금방 끝난다.
     @Test func manyLinksStayFast() {
         var entries: [ZipEntry] = []
