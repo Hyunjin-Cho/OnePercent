@@ -739,4 +739,23 @@ import Testing
         let broken = beta.make()
         #expect(broken.noteLaunch() == nil && broken.lastError?.code == "badConfiguration", "a running version the scheme cannot read is reported")
     }
+
+    /// 2026-11-22 (#6): 예전엔 첫 확인이 이 오류를 지우고 "최신"으로 기록했다(확인 시각까지 남겨 다음 달까지 조용).
+    @Test func unreadableRunningVersionIsNeverUpToDate() async {
+        NetworkStub.reset()
+        let h = Harness()
+        h.version = "1.0-beta"
+        let updater = h.make()
+        updater.noteLaunch()
+        respond("1.1")
+        await updater.checkNow()
+        #expect(updater.lastError?.code == "badConfiguration", "still reported after a user check")
+        #expect(updater.lastError?.localizedDescription.contains("1.0-beta") == true, "names the version")
+        #expect(updater.phase == .idle, "not up to date: \(updater.phase)")
+        #expect(apiCount == 0, "GitHub is not asked")
+        #expect(updater.lastCheck == nil && updater.latestVersion == nil, "nothing stored as a successful check")
+        await updater.checkNow(userInitiated: false)
+        #expect(updater.lastError?.code == "badConfiguration" && apiCount == 0, "an automatic check reports it too")
+        #expect(h.notices.isEmpty)
+    }
 }
