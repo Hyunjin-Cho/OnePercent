@@ -82,17 +82,21 @@ enum Fixture {
         for (name, size) in entries {
             let bytes = Array(name.utf8)
             let mode: UInt32 = links.contains(name) ? 0o120755 : (name.hasSuffix("/") ? 0o40755 : 0o100644)
-            directory += [0x50, 0x4b, 0x01, 0x02] + le16(0x0314) + le16(20) + le16(0x0800) + le16(8) + le16(0) + le16(0)
-            directory += le32(0) + le32(zip64 ? 0xffff_ffff : size / 2) + le32(zip64 ? 0xffff_ffff : size)
-            directory += le16(bytes.count) + le16(0) + le16(0) + le16(0) + le16(0) + le32(mode << 16) + le32(0) + bytes
+            directory += join([0x50, 0x4b, 0x01, 0x02], le16(0x0314), le16(20), le16(0x0800), le16(8), le16(0), le16(0))
+            directory += join(le32(0), le32(zip64 ? 0xffff_ffff : size / 2), le32(zip64 ? 0xffff_ffff : size))
+            directory += join(le16(bytes.count), le16(0), le16(0), le16(0), le16(0), le32(mode << 16), le32(0), bytes)
         }
         directory += trailing
         let offset = UInt32(data.count)
         data += directory
-        data += [0x50, 0x4b, 0x05, 0x06] + le16(0) + le16(0) + le16(entries.count) + le16(entries.count)
-        data += le32(UInt32(directory.count)) + le32(offset) + le16(comment.count) + comment
+        data += join([0x50, 0x4b, 0x05, 0x06], le16(0), le16(0), le16(entries.count), le16(entries.count))
+        data += join(le32(UInt32(directory.count)), le32(offset), le16(comment.count), comment)
         return data
     }
+
+    /// The parts one after another. 2026-11-22 (#10): Swift 6.0(Xcode 16.0)은 배열 글자와 `+` 를 길게 이은 식을
+    /// "unable to type-check this expression in reasonable time" 으로 포기했다. 이어 붙이기를 함수 하나로 한다.
+    static func join(_ parts: [UInt8]...) -> [UInt8] { parts.flatMap { $0 } }
 
     static func parse(_ bytes: [UInt8]) -> [ZipEntry]? {
         let tail = Array(bytes.suffix(UpdateArchive.tailBytes))

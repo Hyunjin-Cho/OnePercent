@@ -59,10 +59,11 @@ import Testing
     /// 2026-11-20 (Fable 리뷰): 링크 "아래"의 항목은 목록 단계에서 거부한다. 링크 자체(프레임워크의 Versions/Current)는 허용한다.
     @Test func entriesUnderALinkAreRefused() {
         let framework = app + "Contents/Frameworks/Kit.framework/"
-        let legit = normal + [(framework, 0), (framework + "Versions/", 0), (framework + "Versions/A/", 0),
+        // 2026-11-22 (#10): 타입을 적는다 — Swift 6.0(Xcode 16.0)은 이 배열을 `[Any]` 로 읽어 컴파일하지 못했다.
+        let legit: [(String, UInt32)] = normal + [(framework, 0), (framework + "Versions/", 0), (framework + "Versions/A/", 0),
                               (framework + "Versions/A/Kit", 100), (framework + "Versions/Current", 1), (framework + "Kit", 1)]
         #expect(problem(legit, links: [framework + "Versions/Current", framework + "Kit"]) == nil, "framework links are fine")
-        let escape = normal + [(app + "Contents/Resources", 1), (app + "Contents/Resources/payload", 100)]
+        let escape: [(String, UInt32)] = normal + [(app + "Contents/Resources", 1), (app + "Contents/Resources/payload", 100)]
         #expect(problem(escape, links: [app + "Contents/Resources"]) == .linkedEntry(appFolder: "TestApp.app"))
         let entries = Fixture.parse(Fixture.zipBytes(escape, links: [app + "Contents/Resources"]))
         #expect(entries?.first { $0.name == app + "Contents/Resources" }?.isSymbolicLink == true, "mode bits read")

@@ -1,0 +1,53 @@
+# 2026-11-22 (#10): 테스트가 한 대의 Mac 에서만 돌았다. PR 과 main 에 올 때마다 GitHub 에서 다시 돌린다.
+# 두 줄: 러너 이미지의 기본 Xcode, 그리고 README 가 약속한 가장 오래된 Xcode(16.x).
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Default Xcode
+            runner: macos-latest
+            xcode: ""
+          - name: Oldest supported Xcode (16.x)
+            runner: macos-15
+            xcode: "16"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Choose Xcode
+        env:
+          WANTED: ${{ matrix.xcode }}
+        run: |
+          echo "Installed:"; ls -d /Applications/Xcode*.app
+          if [ -n "$WANTED" ]; then
+            # The lowest installed Xcode whose version starts with $WANTED.
+            pick="$(ls -d /Applications/Xcode_"$WANTED".*app /Applications/Xcode_"$WANTED".app 2>/dev/null | sort -V | head -1)"
+            [ -n "$pick" ] || { echo "::error::No Xcode $WANTED on this runner"; exit 1; }
+            sudo xcode-select -s "$pick"
+          fi
+          xcodebuild -version
+          swift --version
+
+      - name: Build (release, warnings are errors)
+        run: swift build -c release -Xswiftc -warnings-as-errors
+
+      - name: Test
+        run: swift test
