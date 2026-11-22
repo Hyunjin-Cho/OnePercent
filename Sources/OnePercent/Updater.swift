@@ -304,7 +304,14 @@ public final class OnePercentUpdater {
     ///   - showNotice: Call ``onUpdateAvailable`` for a found update. Pass `false` when the result is shown in place
     ///     (a settings screen); the version then also counts as announced so no popup repeats it later.
     public func checkNow(userInitiated: Bool = true, showNotice: Bool = true) async {
-        guard !busy, !suspended, gate.operation == nil, UpdateDecision.shouldCheckNow(
+        guard !busy, !suspended else { return }
+        // 2026-11-22 (#22): 앱의 다른 작업이 작업권을 쥐고 있을 때, 사용자가 누른 확인은 말없이 끝내지 않는다 —
+        // 설치 버튼과 같은 "다른 작업 중"을 남긴다(예전엔 아무 표시 없이 돌아와 버튼이 고장 난 것처럼 보였다). 자동 확인은 조용히 넘어간다.
+        if gate.operation != nil {
+            if userInitiated { lastError = .busy }
+            return
+        }
+        guard UpdateDecision.shouldCheckNow(
             schedule: configuration.schedule, automaticChecksEnabled: automaticChecksEnabled,
             lastCheck: lastCheck, now: now(), forced: userInitiated) else { return }
         guard configuration.problems.isEmpty else {

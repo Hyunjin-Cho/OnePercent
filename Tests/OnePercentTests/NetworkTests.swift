@@ -298,6 +298,23 @@ import Testing
         h.gate.finish(token)
     }
 
+    /// 2026-11-22 (#22): 앱이 작업권을 쥐고 있으면 사용자 확인은 "다른 작업 중"을 남기고, 자동 확인은 조용하다. 둘 다 묻지 않는다.
+    @Test func aHeldGateIsReportedToTheUser() async {
+        NetworkStub.reset()
+        let h = Harness()
+        let updater = h.make()
+        respond("1.1")
+        let token = h.gate.begin("app.reset")!
+        await updater.checkNow(userInitiated: false)
+        #expect(updater.lastError == nil && apiCount == 0, "automatic: quiet")
+        await updater.checkNow()
+        #expect(updater.lastError == .busy && apiCount == 0, "the user is told")
+        #expect(updater.presentation.errorText == OnePercentText.error(.busy))
+        h.gate.finish(token)
+        await updater.checkNow()
+        #expect(updater.lastError == nil && apiCount == 1, "asks once the gate is free")
+    }
+
     @Test func launchBookkeeping() {
         let h = Harness()
         h.version = "1.1"
