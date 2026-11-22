@@ -1,7 +1,8 @@
 # Manual test on a real Mac
 
-> **기준일:** 2026-11-20 · **Status:** not run yet. Fill in the result column (date, macOS version, pass/fail, notes) each time.
+> **기준일:** 2026-11-22 · **Status:** not run yet. Fill in the result column (date, macOS version, pass/fail, notes) each time.
 > 2026-11-20: the administrator path is **off by default** (`allowsAdministratorInstall = false`) until cases 2–4 pass. Turn it on in a test build for those cases.
+> 2026-11-22 (#8): the test repository must be **public** — OnePercent asks GitHub without signing in, and a private repository answers 404 ("No release was found").
 
 Automated tests cover everything except what needs a real signature, a real password prompt and a real relaunch. Run these with a real app that uses OnePercent, two notarized builds of it (old and new), and a test repository.
 
@@ -9,7 +10,7 @@ Automated tests cover everything except what needs a real signature, a real pass
 
 1. Make two notarized builds: **old** (for example 1.0, build 1) and **new** (1.1, build 2).
 2. Zip the new one with `ditto -c -k --keepParent` and check it with `onepercent-check` (README → Making a release).
-3. Publish it as the latest release of a **test repository**. In a Debug build of the old app, point OnePercent there in code:
+3. Publish it as the latest release of a **public test repository** (a private one is never found). In a Debug build of the old app, point OnePercent there in code:
    `#if DEBUG` · `configuration.testRepository = "owner/test-repo"` · `#endif` (Release builds of the package ignore it).
 4. Back up the app's preferences before each run (`~/Library/Preferences/<bundle id>.plist`).
 
