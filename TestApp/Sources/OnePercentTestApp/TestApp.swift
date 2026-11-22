@@ -73,6 +73,8 @@ enum Probe {
         let updated = updater.noteLaunch()
         log("launch path=\(Bundle.main.bundlePath) justUpdatedTo=\(updated ?? "nil") admin=\(allowsAdministratorInstall) "
             + "repository=\(configuration.repository) args=\(arguments.joined(separator: " "))")
+        // Case 13: the app's language and one OnePercent string in it.
+        log("language=\(Bundle.main.preferredLocalizations.first ?? "?") text=\"\(OnePercentText.checkNow)\"")
         if let updated { log("text: \(OnePercentText.updated(to: updated))") }
         updater.willRelaunch = { log("relaunching") }
         watch()

@@ -7,6 +7,7 @@
 #   OWNER/REPO      the public test repository the app checks
 #   --adhoc         sign ad-hoc instead of with Developer ID (case 10: wrong signer)
 #   --notarize P    submit to Apple's notary service with the notarytool keychain profile P, then staple
+#   --padding MB    add MB of random bytes so the download takes a while (cases 5 and 6)
 #
 # Output: TestApp/dist/VERSION/OnePercentTestApp.app and TestApp/dist/VERSION/OnePercentTestApp_VERSION.zip
 #
@@ -15,13 +16,14 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-[ $# -ge 3 ] || { sed -n '3,11p' "$0"; exit 2; }
+[ $# -ge 3 ] || { sed -n '3,12p' "$0"; exit 2; }
 VERSION="$1"; BUILD="$2"; REPOSITORY="$3"; shift 3
-ADHOC=0; PROFILE=""
+ADHOC=0; PROFILE=""; PADDING=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --adhoc) ADHOC=1; shift ;;
     --notarize) PROFILE="${2:?--notarize needs a keychain profile name}"; shift 2 ;;
+    --padding) PADDING="${2:?--padding needs a size in MB}"; shift 2 ;;
     *) echo "unknown option $1"; exit 2 ;;
   esac
 done
@@ -42,6 +44,8 @@ rm -rf "$OUT"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN/$NAME" "$APP/Contents/MacOS/$NAME"
 cp -R "$BIN/OnePercent_OnePercent.bundle" "$APP/Contents/Resources/"
+# Random, so the ZIP cannot shrink it.
+[ "$PADDING" -gt 0 ] && dd if=/dev/urandom of="$APP/Contents/Resources/padding.bin" bs=1048576 count="$PADDING" 2>/dev/null
 
 LANGUAGES=(cs da de el en es fi fil fr hu id it ja ko ms nb nl pl pt-BR pt-PT ro ru sv th tr uk vi zh-Hans zh-Hant)
 PLIST="$APP/Contents/Info.plist"
