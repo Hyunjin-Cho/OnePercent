@@ -27,6 +27,9 @@ public struct OnePercentConfiguration: Sendable {
     /// Text in front of the version in your release tags, such as `"v"` for `v1.2.0`. Default: none.
     public var tagPrefix: String
     /// The release asset file name for a tag. `nil` (default) means `<appName>_<tag>.zip`.
+    /// GitHub renames uploaded files whose names have anything other than ASCII letters, digits, `.`, `-` and `_`
+    /// (measured 2026-11-22: `Café_1.6.zip` → `Cafe_1.6.zip`, `닦아_1.6.zip` → `_1.6.zip`, `My App (Beta)_1.6.zip` → `My.App.Beta._1.6.zip`).
+    /// If your app's name has such characters, set this to a plain name — ``problems`` reports it otherwise.
     public var assetName: (@Sendable (_ tag: String) -> String)?
     /// An optional Info.plist key whose string value is appended to `CFBundleShortVersionString` to form the
     /// public version (for example `_hotfix1`). Info.plist is covered by the code signature, so the value can be trusted.
@@ -126,6 +129,10 @@ public struct OnePercentConfiguration: Sendable {
         if !Self.isValidTeam(teamIdentifier) { list.append("teamIdentifier must be 10 uppercase letters or digits") }
         if !Self.isValidBundleIdentifier(bundleIdentifier) { list.append("bundleIdentifier has unsupported characters") }
         if !Self.isValidAppName(appName) { list.append("appName must be a plain file name") }
+        // 2026-11-22 (#18): GitHub 가 바꿔 올리는 이름이면 기본 자산 이름을 영영 찾지 못한다("설치 파일 준비 안 됨"만 반복) — 미리 알린다.
+        if assetName == nil, !appName.allSatisfy(Self.isTagCharacter) {
+            list.append("appName has characters GitHub changes in uploaded file names — set assetName to a name of ASCII letters, digits, '.', '-', '_'")
+        }
         if tagPrefix.contains(where: { !Self.isTagCharacter($0) }) { list.append("tagPrefix has unsupported characters") }
         if allowedHosts.isEmpty { list.append("allowedHosts is empty") }
         if limits.maxAssetBytes <= 0 || limits.maxMetadataBytes <= 0 { list.append("limits must be positive") }

@@ -30,6 +30,13 @@ import Testing
         #expect(config.assetFileName(forTag: "1.2") == "TestApp_1.2.zip")
         var custom = config; custom.assetName = { "test-\($0).zip" }
         #expect(custom.assetFileName(forTag: "1.2") == "test-1.2.zip")
+        // 2026-11-22 (#18): GitHub 가 올릴 때 바꾸는 이름(비ASCII·공백·괄호)은 assetName 없이는 문제로 알린다.
+        for name in ["Caf\u{E9}", "닦아", "My App"] {
+            var c = config; c.appName = name
+            #expect(c.problems.contains { $0.contains("assetName") }, "\(name)")
+            c.assetName = { "App_\($0).zip" }
+            #expect(c.problems.isEmpty, "\(name) with assetName: \(c.problems)")
+        }
     }
 
     @Test func storedKeysUseThePrefix() {

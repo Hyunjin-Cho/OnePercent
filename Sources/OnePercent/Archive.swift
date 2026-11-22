@@ -103,13 +103,24 @@ enum UpdateArchive {
     /// `..` 마디를 한 글자로 묶어 숨겼다.
     static func isInsideApp(_ name: String, appFolder: String) -> Bool {
         let bytes = Array(name.utf8)
-        guard bytes.starts(with: Array((appFolder + "/").utf8)), !bytes.contains(0x5C), !bytes.contains(0) else { return false }
+        guard !bytes.contains(0x5C), !bytes.contains(0), let slash = bytes.firstIndex(of: 0x2F),
+              sameName(Array(bytes[..<slash]), appFolder) else { return false }
         let parts = bytes.split(separator: 0x2F, omittingEmptySubsequences: false)
         for (index, part) in parts.enumerated() {
             if part.isEmpty { if index == parts.count - 1 { continue }; return false }
             if part.elementsEqual([0x2E]) || part.elementsEqual([0x2E, 0x2E]) { return false }
         }
         return true
+    }
+
+    /// The first path part of an entry is the app folder, whichever Unicode normalization each side uses.
+    /// 2026-11-22 (#18): macOS 는 폴더 이름을 분해형(NFD)으로 ZIP 에 넣고, 코드에 쓴 appName 은 보통 조합형(NFC)이다.
+    /// 바이트로만 비교하니 `Café`·한글 이름 앱의 모든 항목이 '앱 밖'이 되어 업데이트가 하나도 설치되지 않았다(실측).
+    /// 두 쪽을 같은 분해형으로 바꿔 비교한다. 정준 분해(NFD)는 `/`·`.`·NUL·`\` 을 새로 만들지 않으므로, 아래의 `..`·빈 마디
+    /// 검사는 지금처럼 원래 바이트로 한다.
+    static func sameName(_ part: [UInt8], _ appFolder: String) -> Bool {
+        guard let text = String(bytes: part, encoding: .utf8) else { return false }
+        return Array(text.decomposedStringWithCanonicalMapping.utf8) == Array(appFolder.decomposedStringWithCanonicalMapping.utf8)
     }
 
     /// The listing check before unpacking. `nil` means it may be unpacked.
