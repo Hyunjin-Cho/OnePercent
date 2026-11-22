@@ -39,6 +39,32 @@ import Testing
         #expect(older.problems.count == 1, "\(older.problems)")
     }
 
+    /// 2026-11-22 (#20): 앱이 바꾼 설정으로 본다 — 내려받기 상한(ZIP 크기), 풀기 상한, 자산 이름, 빌드 규칙.
+    @Test func usesTheAppsOwnConfiguration() throws {
+        let (root, zip) = try releaseZip("own-config", version: "1.1", build: "2")
+        defer { try? FileManager.default.removeItem(at: root) }
+        var small = Fixture.configuration()
+        small.limits = Limits(maxAssetBytes: 10, maxMetadataBytes: 1024, archive: .standard)
+        let tooBig = OnePercentReleaseCheck.check(zip: zip, tag: "1.1", configuration: small, checkSignature: false)
+        #expect(tooBig.problems.contains { $0.contains("download limit") }, "\(tooBig.problems)")
+        var few = Fixture.configuration()
+        few.limits = Limits(maxAssetBytes: Limits.standard.maxAssetBytes, maxMetadataBytes: 1024,
+                            archive: ArchiveLimits(entries: 2, bytes: 1 << 30, seconds: 60))
+        #expect(OnePercentReleaseCheck.check(zip: zip, tag: "1.1", configuration: few, checkSignature: false).problems.count == 1,
+                "the app's unpacking limits apply")
+        let renamed = root.appendingPathComponent("Custom-1.1.zip")
+        try FileManager.default.copyItem(at: zip, to: renamed)
+        var custom = Fixture.configuration()
+        custom.assetName = { "Custom-\($0).zip" }
+        #expect(OnePercentReleaseCheck.check(zip: renamed, tag: "1.1", configuration: custom, checkSignature: false).problems.isEmpty)
+        #expect(!OnePercentReleaseCheck.check(zip: zip, tag: "1.1", configuration: custom, checkSignature: false).problems.isEmpty,
+                "the default name is wrong for an app with its own assetName")
+        var sameBuildAllowed = Fixture.configuration(requireBuildIncrease: false)
+        sameBuildAllowed.limits = .standard
+        #expect(OnePercentReleaseCheck.check(zip: zip, tag: "1.1", configuration: sameBuildAllowed, checkSignature: false,
+                                             previousVersion: "1.0", previousBuild: "2").problems.isEmpty, "requireBuildIncrease: false")
+    }
+
     @Test func setupMistakes() throws {
         let (root, zip) = try releaseZip("mistakes", version: "1.1", build: "2")
         defer { try? FileManager.default.removeItem(at: root) }

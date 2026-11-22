@@ -53,7 +53,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
     --previous-version 1.1 --previous-build 7
 ```
 
-통과하면 태그 `1.2`로 GitHub 릴리스를 올리고 ZIP을 붙입니다.
+통과하면 태그 `1.2`로 GitHub 릴리스를 올리고 ZIP을 붙입니다. 앱에서 상한(`limits`)·`assetName`·`requireBuildIncrease`를 바꿨다면 같은 값을 `--max-asset-mb`·`--max-entries`·`--max-unpacked-mb`·`--asset-name`·`--no-build-increase`로 넘겨야 사용자 Mac과 같은 검사가 됩니다(`--help`).
 
 ## 알아 둘 것
 
@@ -122,7 +122,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
     --previous-version 1.1 --previous-build 7
 ```
 
-If it passes, publish a GitHub release with tag `1.2` and attach the ZIP.
+If it passes, publish a GitHub release with tag `1.2` and attach the ZIP. If your app changes `limits`, `assetName` or `requireBuildIncrease`, pass the same values (`--max-asset-mb`, `--max-entries`, `--max-unpacked-mb`, `--asset-name`, `--no-build-increase`) so the check matches users' Macs (`--help`).
 
 ## Good to know
 
@@ -189,7 +189,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
     --previous-version 1.1 --previous-build 7
 ```
 
-通過したら、タグ `1.2` で GitHub リリースを公開し、ZIP を添付します。
+通過したら、タグ `1.2` で GitHub リリースを公開し、ZIP を添付します。アプリで上限（`limits`）・`assetName`・`requireBuildIncrease` を変えている場合は、同じ値を `--max-asset-mb`・`--max-entries`・`--max-unpacked-mb`・`--asset-name`・`--no-build-increase` で渡すと、ユーザーの Mac と同じ検査になります（`--help`）。
 
 ## 知っておくこと
 
@@ -256,7 +256,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
     --previous-version 1.1 --previous-build 7
 ```
 
-通过后，用标签 `1.2` 发布 GitHub Release 并附上 ZIP。
+通过后，用标签 `1.2` 发布 GitHub Release 并附上 ZIP。如果应用改了上限（`limits`）、`assetName` 或 `requireBuildIncrease`，请用 `--max-asset-mb`、`--max-entries`、`--max-unpacked-mb`、`--asset-name`、`--no-build-increase` 传入相同的值，检查才与用户的 Mac 一致（`--help`）。
 
 ## 注意事项
 
@@ -323,7 +323,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
     --previous-version 1.1 --previous-build 7
 ```
 
-通過後，用標籤 `1.2` 發佈 GitHub Release 並附上 ZIP。
+通過後，用標籤 `1.2` 發佈 GitHub Release 並附上 ZIP。如果 App 改了上限（`limits`）、`assetName` 或 `requireBuildIncrease`，請用 `--max-asset-mb`、`--max-entries`、`--max-unpacked-mb`、`--asset-name`、`--no-build-increase` 傳入相同的值，檢查才會與使用者的 Mac 一致（`--help`）。
 
 ## 注意事項
 

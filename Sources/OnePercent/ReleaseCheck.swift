@@ -1,6 +1,9 @@
 import Foundation
 
-/// Checks a release ZIP **before** you upload it, with the same code the updater runs on users' Macs.
+/// Checks a release ZIP **before** you upload it, with the same code the updater runs on users' Macs — and with the
+/// configuration you pass, so pass your app's own (limits, `assetName`, `requireBuildIncrease`).
+/// 2026-11-22 (#20): 코드는 같아도 설정이 기본값이면 '같은 검사'가 아니었다 — 더 엄격한 상한을 쓰는 앱은 여기서 통과하고
+/// 사용자 Mac 에서 거부될 수 있었다. CLI 에 설정 옵션을 더하고, 빠져 있던 ZIP 크기(내려받기 상한) 검사를 넣었다.
 /// 2026-11-20: 하늘키보드 `scripts/check_update_zip.swift` 와 같은 생각 — ZIP 만드는 방법이 바뀌어 현장 업데이트가 거부되는 일을
 /// 빌드 단계에서 막는다. 서명·공증 검사는 실제 앱으로 함께 돌린다(`checkSignature`).
 public enum OnePercentReleaseCheck {
@@ -25,6 +28,10 @@ public enum OnePercentReleaseCheck {
         var problems = configuration.problems
         if zip.lastPathComponent != configuration.assetFileName(forTag: tag) {
             problems.append("asset name must be \(configuration.assetFileName(forTag: tag)), not \(zip.lastPathComponent)")
+        }
+        // 앱은 이 크기를 넘는 자산을 안내하지도(selectAsset) 받지도(download) 않는다 — 올리기 전에 같은 상한으로 본다.
+        if let size = (try? FileManager.default.attributesOfItem(atPath: zip.path))?[.size] as? Int, size > configuration.limits.maxAssetBytes {
+            problems.append("the ZIP is \(size) bytes, over the download limit (limits.maxAssetBytes = \(configuration.limits.maxAssetBytes))")
         }
         guard let version = ReleaseDecision.version(fromTag: tag, configuration: configuration) else {
             return Report(problems: problems + ["tag \(tag) is not a valid version for scheme \(configuration.versionScheme.name)"],
