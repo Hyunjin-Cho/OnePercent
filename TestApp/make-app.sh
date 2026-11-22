@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds OnePercentTestApp.app for docs/MANUAL-TEST.md and zips it the way OnePercent expects.
 #
-#   TestApp/make-app.sh VERSION BUILD OWNER/REPO [--adhoc] [--notarize PROFILE]
+#   TestApp/make-app.sh VERSION BUILD OWNER/REPO [--adhoc] [--notarize PROFILE] [--padding MB]
 #
 #   VERSION BUILD   CFBundleShortVersionString and CFBundleVersion (for example 1.1 2)
 #   OWNER/REPO      the public test repository the app checks
@@ -27,6 +27,14 @@ while [ $# -gt 0 ]; do
     *) echo "unknown option $1"; exit 2 ;;
   esac
 done
+# 2026-11-22 (#21): 무엇이든 지우기 전에 값을 검사한다. VERSION 은 rm -rf 경로(dist/$VERSION)에 들어간다 —
+# 예전엔 검사가 없어 '../..' 한 번이면 저장소 폴더가 지워질 수 있었다.
+version_pattern='^[0-9][0-9A-Za-z._-]*$'
+build_pattern='^[0-9]+(\.[0-9]+){0,3}$'
+number_pattern='^[0-9]+$'
+[[ $VERSION =~ $version_pattern && $VERSION != *..* ]] || { echo "✗ VERSION must look like 1.2 or 2026.11.17 (got: $VERSION)"; exit 2; }
+[[ $BUILD =~ $build_pattern ]] || { echo "✗ BUILD must be a build number such as 2 or 1.10 (got: $BUILD)"; exit 2; }
+[[ $PADDING =~ $number_pattern ]] || { echo "✗ --padding needs a whole number of MB (got: $PADDING)"; exit 2; }
 NAME=OnePercentTestApp
 BUNDLE_ID="${BUNDLE_ID:-com.example.OnePercentTestApp}"
 
@@ -40,6 +48,7 @@ BIN="$(swift build -c release --show-bin-path)"
 
 OUT="dist/$VERSION"
 APP="$OUT/$NAME.app"
+[ "$(dirname "$OUT")" = dist ] || { echo "✗ refusing to replace $OUT (not directly inside dist/)"; exit 1; }
 rm -rf "$OUT"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN/$NAME" "$APP/Contents/MacOS/$NAME"
