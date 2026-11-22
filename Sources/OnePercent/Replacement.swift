@@ -23,16 +23,24 @@ enum UpdateReplacement {
     /// If copying or the re-check fails, the installed app is untouched.
     /// 2026-11-13 (하늘키보드 #226 F-9): 임시 폴더의 사본은 검증과 복사 사이에 같은 사용자 권한의 코드가 바꿀 수 있다.
     /// staging 의 복사본이 검증 때 읽은 정체와 같고 서명이 온전할 때만 바꾼다.
+    /// 2026-11-22 (#19): staging 은 새로 만든 폴더이고 앱 사본은 그 안에 둔다. 예전엔 앱을 staging 이름으로 바로 복사해,
+    /// 사본이 원본(ZIP 에서 푼 앱)의 수정 시각 — 보통 몇 시간 전 — 을 물려받았다. 그래서 교체하는 1~2초 사이에 같은 앱이 또
+    /// 실행되면 그쪽 시작 정리(10분 기준)가 진행 중인 사본을 지워 교체가 실패했다(실측: 1시간 전 빌드 → 나이 3601초 → 삭제).
+    /// 새로 만든 폴더는 나이가 지금부터 시작하므로 removeLeftovers 의 10분 보호가 이 사본에도 통한다.
     static func replaceAtomically(destination: URL, with verified: VerifiedUpdate, requirement: String,
                                   verifyCopy: ((URL, VerifiedIdentity) -> Bool)? = nil) throws {
         let fm = FileManager.default
         let staging = destination.deletingLastPathComponent()
             .appendingPathComponent(stagingPrefix(for: destination) + UUID().uuidString)
         defer { try? fm.removeItem(at: staging) }
-        do { try fm.copyItem(at: verified.app, to: staging) } catch { throw OnePercentError.replaceFailed(error.localizedDescription) }
-        let intact = verifyCopy?(staging, verified.identity) ?? isIntactCopy(at: staging, identity: verified.identity, requirement: requirement)
+        let copy = staging.appendingPathComponent(destination.lastPathComponent)
+        do {
+            try fm.createDirectory(at: staging, withIntermediateDirectories: false)
+            try fm.copyItem(at: verified.app, to: copy)
+        } catch { throw OnePercentError.replaceFailed(error.localizedDescription) }
+        let intact = verifyCopy?(copy, verified.identity) ?? isIntactCopy(at: copy, identity: verified.identity, requirement: requirement)
         guard intact else { throw OnePercentError.verificationFailed([.copyChanged]) }
-        do { _ = try fm.replaceItemAt(destination, withItemAt: staging) } catch { throw OnePercentError.replaceFailed(error.localizedDescription) }
+        do { _ = try fm.replaceItemAt(destination, withItemAt: copy) } catch { throw OnePercentError.replaceFailed(error.localizedDescription) }
     }
 
     /// The copy is a real folder with the same bundle ID, version and build as at check time.
