@@ -5,6 +5,7 @@
 ## Unreleased
 
 ### Project
+- `TestApp/`: **OnePercentTestApp** and `make-app.sh` for the real-Mac cases — driven by buttons or launch arguments, every step logged. First results (cases 5, 6, 9–13 pass) are in `docs/MANUAL-TEST.md`. ([#15](https://github.com/Hyunjin-Cho/OnePercent/issues/15))
 - The GitHub Actions workflow is removed — owner decision 2026-11-22: OnePercent goes without CI. The test fixes from [#11](https://github.com/Hyunjin-Cho/OnePercent/pull/11) stay; run `swift test` (and `swift test --build-system native`) by hand. ([#13](https://github.com/Hyunjin-Cho/OnePercent/issues/13))
 
 ## 0.1.1 — 2026-11-22
