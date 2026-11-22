@@ -12,6 +12,8 @@ GitHub Releases로 배포하는 macOS 앱의 앱 안 업데이트 부품입니�
 
 - macOS 14 이상, Swift 6(Xcode 16 이상)
 - **Developer ID**로 서명하고 **공증**받은 앱
+- **공개** GitHub 저장소 — 로그인 없이 묻기 때문에 비공개 저장소는 "릴리스를 찾을 수 없어요"로 끝납니다
+- App Sandbox를 켜지 않은 앱 — 샌드박스 앱은 자기 옆에 새 사본을 놓을 수 없습니다
 - 릴리스마다 버전과 같은 태그(`1.2` — `v1.2` 꼴이면 `tagPrefix: "v"`), `<앱이름>_<태그>.zip` 하나, 올린 `CFBundleVersion`
 - 업데이트가 앱을 다시 여는 동안 `applicationShouldTerminate`에서 `.terminateCancel`을 돌려주지 않기
 
@@ -35,7 +37,7 @@ updater.onUpdateAvailable = { update in /* 직접 만든 알림. 여기서 설�
 updater.willRelaunch = { /* 저장할 것은 여기서 — 새 앱이 applicationWillTerminate보다 먼저 뜹니다 */ }
 updater.startAutomaticChecks()
 
-// 설정 화면: await updater.checkNow() · [설치] 버튼: await updater.installAvailableUpdate()
+// 설정 화면: await updater.checkNow(showNotice: false) · [설치] 버튼: await updater.installAvailableUpdate()
 ```
 
 화면은 `updater.presentation`과 `OnePercentText`(29개 언어)로 만듭니다. 다른 설정은 [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift) 문서 주석에 있습니다.
@@ -56,6 +58,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 
 - 사용자가 쓸 수 없는 위치의 앱은 기본으로 앱 안에서 설치하지 않고 릴리스 페이지로 안내합니다(`allowsAdministratorInstall`, 실제 Mac 확인 전 — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)).
 - GitHub로 HTTPS `GET`만 보냅니다. 헤더는 `Accept`·`User-Agent`·고정 `Accept-Language: en`이고, 쿠키·디스크 캐시는 쓰지 않습니다.
+- Xcode 앱 타깃은 문구 묶음 `OnePercent_OnePercent.bundle`을 알아서 넣습니다. SwiftPM 실행 파일로 `.app`을 직접 묶는다면 이 묶음을 `Contents/Resources`에 복사하세요 — 없으면 OnePercent 문구를 처음 쓰는 순간 앱이 꺼집니다.
 
 MIT — [LICENSE](LICENSE)
 
@@ -77,6 +80,8 @@ A small in-app updater for macOS apps that ship through GitHub Releases. It down
 
 - macOS 14 or later, Swift 6 (Xcode 16 or later).
 - An app signed with **Developer ID** and **notarized**.
+- A **public** GitHub repository — OnePercent asks without signing in, so a private one ends in "No release was found".
+- No App Sandbox — a sandboxed app cannot place the new copy next to itself.
 - Each release: a tag equal to the version (`1.2` — for `v1.2` set `tagPrefix: "v"`), one ZIP named `<YourApp>_<tag>.zip`, and a raised `CFBundleVersion`.
 - While an update reopens your app, `applicationShouldTerminate` must not return `.terminateCancel`.
 
@@ -100,7 +105,7 @@ updater.onUpdateAvailable = { update in /* show your own notice; do not install 
 updater.willRelaunch = { /* save here — the new copy starts before applicationWillTerminate */ }
 updater.startAutomaticChecks()
 
-// Settings: await updater.checkNow() · Install button: await updater.installAvailableUpdate()
+// Settings: await updater.checkNow(showNotice: false) · Install button: await updater.installAvailableUpdate()
 ```
 
 Build your UI from `updater.presentation` and `OnePercentText` (29 languages). Other settings are documented in [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift).
@@ -121,6 +126,7 @@ If it passes, publish a GitHub release with tag `1.2` and attach the ZIP.
 
 - An app in a place the user cannot write is not installed in-app by default; the user is pointed to the release page (`allowsAdministratorInstall`, untested on a real Mac — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)).
 - Only HTTPS `GET` requests to GitHub. Headers: `Accept`, `User-Agent`, fixed `Accept-Language: en`. No cookies, no disk cache.
+- Xcode app targets copy the text bundle `OnePercent_OnePercent.bundle` for you. If you put the `.app` together yourself from a SwiftPM executable, copy it into `Contents/Resources` — without it the app crashes the first time it shows OnePercent text.
 
 MIT — [LICENSE](LICENSE)
 
@@ -140,6 +146,8 @@ GitHub Releases で配布する macOS アプリのための、小さなアプリ
 
 - macOS 14 以降、Swift 6（Xcode 16 以降）
 - **Developer ID** で署名し、**公証**を受けたアプリ
+- **公開**の GitHub リポジトリ — ログインせずに問い合わせるため、非公開リポジトリは「リリースが見つかりません」で終わります
+- App Sandbox を使わないアプリ — サンドボックス化したアプリは、自分の隣に新しいコピーを置けません
 - リリースごとに、バージョンと同じタグ（`1.2` — `v1.2` なら `tagPrefix: "v"`）、`<アプリ名>_<タグ>.zip` 1 つ、上げた `CFBundleVersion`
 - アップデートがアプリを再起動する間、`applicationShouldTerminate` で `.terminateCancel` を返さないこと
 
@@ -163,7 +171,7 @@ updater.onUpdateAvailable = { update in /* 独自の通知を表示。ここで�
 updater.willRelaunch = { /* 保存はここで — 新しいアプリは applicationWillTerminate より先に起動します */ }
 updater.startAutomaticChecks()
 
-// 設定画面: await updater.checkNow() · ［インストール］ボタン: await updater.installAvailableUpdate()
+// 設定画面: await updater.checkNow(showNotice: false) · ［インストール］ボタン: await updater.installAvailableUpdate()
 ```
 
 画面は `updater.presentation` と `OnePercentText`（29 言語）で作ります。その他の設定は [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift) のドキュメントコメントにあります。
@@ -184,6 +192,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 
 - ユーザーが書き込めない場所のアプリは、既定ではアプリ内でインストールせず、リリースページへ案内します（`allowsAdministratorInstall`、実機での確認前 — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)）。
 - GitHub への HTTPS `GET` のみ送ります。ヘッダーは `Accept`・`User-Agent`・固定の `Accept-Language: en` で、Cookie・ディスクキャッシュは使いません。
+- Xcode のアプリターゲットは文言バンドル `OnePercent_OnePercent.bundle` を自動で入れます。SwiftPM の実行ファイルから `.app` を自分で組み立てる場合は、このバンドルを `Contents/Resources` にコピーしてください — ないと OnePercent の文言を初めて表示した瞬間にアプリが終了します。
 
 MIT — [LICENSE](LICENSE)
 
@@ -203,6 +212,8 @@ MIT — [LICENSE](LICENSE)
 
 - macOS 14 或更高版本，Swift 6（Xcode 16 或更高版本）
 - 使用 **Developer ID** 签名并通过**公证**的应用
+- **公开**的 GitHub 仓库 — 检查时不登录，私有仓库只会得到“找不到发布版本”
+- 不启用 App Sandbox 的应用 — 沙盒应用无法把新副本放在自己旁边
 - 每个发布：与版本相同的标签（`1.2` — 若为 `v1.2`，设置 `tagPrefix: "v"`）、一个 `<应用名>_<标签>.zip`、提高后的 `CFBundleVersion`
 - 更新重新打开应用期间，`applicationShouldTerminate` 不要返回 `.terminateCancel`
 
@@ -226,7 +237,7 @@ updater.onUpdateAvailable = { update in /* 显示你自己的通知。不要在�
 updater.willRelaunch = { /* 需要保存的内容在这里保存 — 新应用会先于 applicationWillTerminate 启动 */ }
 updater.startAutomaticChecks()
 
-// 设置界面: await updater.checkNow() · ［安装］按钮: await updater.installAvailableUpdate()
+// 设置界面: await updater.checkNow(showNotice: false) · ［安装］按钮: await updater.installAvailableUpdate()
 ```
 
 界面由 `updater.presentation` 和 `OnePercentText`（29 种语言）构建。其他设置见 [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift) 的文档注释。
@@ -247,6 +258,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 
 - 用户无法写入位置的应用，默认不在应用内安装，而是引导用户到发布页面（`allowsAdministratorInstall`，尚未在真机验证 — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)）。
 - 只向 GitHub 发送 HTTPS `GET` 请求。请求头为 `Accept`、`User-Agent` 和固定的 `Accept-Language: en`，不使用 Cookie 和磁盘缓存。
+- Xcode 应用目标会自动放入文字资源包 `OnePercent_OnePercent.bundle`。如果你用 SwiftPM 可执行文件自己组装 `.app`，请把它复制到 `Contents/Resources` — 缺少时，应用第一次显示 OnePercent 文字就会崩溃。
 
 MIT — [LICENSE](LICENSE)
 
@@ -266,6 +278,8 @@ MIT — [LICENSE](LICENSE)
 
 - macOS 14 或更新版本，Swift 6（Xcode 16 或更新版本）
 - 使用 **Developer ID** 簽章並通過**公證**的 App
+- **公開**的 GitHub 儲存庫 — 檢查時不登入，私人儲存庫只會得到「找不到發佈版本」
+- 不啟用 App Sandbox 的 App — 沙盒 App 無法把新副本放在自己旁邊
 - 每個發佈：與版本相同的標籤（`1.2` — 若為 `v1.2`，設定 `tagPrefix: "v"`）、一個 `<App 名稱>_<標籤>.zip`、提高後的 `CFBundleVersion`
 - 更新重新開啟 App 期間，`applicationShouldTerminate` 不要回傳 `.terminateCancel`
 
@@ -289,7 +303,7 @@ updater.onUpdateAvailable = { update in /* 顯示你自己的通知。不要在�
 updater.willRelaunch = { /* 需要儲存的內容在這裡儲存 — 新 App 會先於 applicationWillTerminate 啟動 */ }
 updater.startAutomaticChecks()
 
-// 設定畫面: await updater.checkNow() · ［安裝］按鈕: await updater.installAvailableUpdate()
+// 設定畫面: await updater.checkNow(showNotice: false) · ［安裝］按鈕: await updater.installAvailableUpdate()
 ```
 
 畫面由 `updater.presentation` 和 `OnePercentText`（29 種語言）建構。其他設定見 [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift) 的文件註解。
@@ -310,6 +324,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 
 - 使用者無法寫入位置的 App，預設不在 App 內安裝，而是引導使用者到發佈頁面（`allowsAdministratorInstall`，尚未在實機驗證 — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)）。
 - 只向 GitHub 傳送 HTTPS `GET` 請求。標頭為 `Accept`、`User-Agent` 和固定的 `Accept-Language: en`，不使用 Cookie 與磁碟快取。
+- Xcode App 目標會自動放入文字資源包 `OnePercent_OnePercent.bundle`。如果你用 SwiftPM 執行檔自己組裝 `.app`，請把它複製到 `Contents/Resources` — 缺少時，App 第一次顯示 OnePercent 文字就會當掉。
 
 MIT — [LICENSE](LICENSE)
 
