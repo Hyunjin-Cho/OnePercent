@@ -4,7 +4,7 @@
 
 **한국어** · [English](#english) · [日本語](#japanese) · [简体中文](#chinese-simplified) · [繁體中文](#chinese-traditional)
 
-> **기준일:** 2026-11-22 · 0.1.0 · 관리자 암호가 필요한 설치는 실제 Mac에서 확인할 때까지 기본으로 꺼져 있습니다.
+> **기준일:** 2026-11-22 · 0.1.1 · 관리자 암호가 필요한 설치는 실제 Mac에서 확인할 때까지 기본으로 꺼져 있습니다.
 
 GitHub Releases로 배포하는 macOS 앱의 앱 안 업데이트 부품입니다. 사용자가 [설치]를 눌렀을 때만 내려받고, 내 팀의 Developer ID 서명·Apple 공증·번들 ID·버전과 빌드 번호 상승을 모두 통과해야 앱을 바꿉니다.
 
@@ -20,7 +20,7 @@ GitHub Releases로 배포하는 macOS 앱의 앱 안 업데이트 부품입니�
 ## 추가하기
 
 ```swift
-.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.0"))
+.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.1"))
 ```
 
 ## 쓰기
@@ -72,7 +72,7 @@ MIT — [LICENSE](LICENSE)
 
 [한국어](#korean) · **English** · [日本語](#japanese) · [简体中文](#chinese-simplified) · [繁體中文](#chinese-traditional)
 
-> **As of:** 2026-11-22 · 0.1.0 · Installs that need an administrator password are off by default until tried on a real Mac.
+> **As of:** 2026-11-22 · 0.1.1 · Installs that need an administrator password are off by default until tried on a real Mac.
 
 A small in-app updater for macOS apps that ship through GitHub Releases. It downloads only when the user presses Install, and replaces the app only if the download passes every check: your Team's Developer ID signature, Apple notarization, bundle ID, and a higher version and build number.
 
@@ -88,7 +88,7 @@ A small in-app updater for macOS apps that ship through GitHub Releases. It down
 ## Add it
 
 ```swift
-.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.0"))
+.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.1"))
 ```
 
 ## Use it
@@ -138,7 +138,7 @@ MIT — [LICENSE](LICENSE)
 
 [한국어](#korean) · [English](#english) · **日本語** · [简体中文](#chinese-simplified) · [繁體中文](#chinese-traditional)
 
-> **基準日：** 2026-11-22 · 0.1.0 · 管理者パスワードが必要なインストールは、実機で確認するまで既定でオフです。
+> **基準日：** 2026-11-22 · 0.1.1 · 管理者パスワードが必要なインストールは、実機で確認するまで既定でオフです。
 
 GitHub Releases で配布する macOS アプリのための、小さなアプリ内アップデート部品です。ユーザーが［インストール］を押したときだけダウンロードし、あなたのチームの Developer ID 署名・Apple 公証・バンドル ID・バージョンとビルド番号の上昇をすべて通過した場合にだけアプリを置き換えます。
 
@@ -154,7 +154,7 @@ GitHub Releases で配布する macOS アプリのための、小さなアプリ
 ## 追加する
 
 ```swift
-.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.0"))
+.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.1"))
 ```
 
 ## 使う
@@ -204,7 +204,7 @@ MIT — [LICENSE](LICENSE)
 
 [한국어](#korean) · [English](#english) · [日本語](#japanese) · **简体中文** · [繁體中文](#chinese-traditional)
 
-> **基准日：** 2026-11-22 · 0.1.0 · 需要管理员密码的安装在真机上验证之前默认关闭。
+> **基准日：** 2026-11-22 · 0.1.1 · 需要管理员密码的安装在真机上验证之前默认关闭。
 
 为通过 GitHub Releases 分发的 macOS 应用准备的小型应用内更新组件。只有用户点击［安装］时才会下载，并且只有通过你团队的 Developer ID 签名、Apple 公证、Bundle ID、版本号与构建号提升的全部检查，才会替换应用。
 
@@ -220,7 +220,7 @@ MIT — [LICENSE](LICENSE)
 ## 添加
 
 ```swift
-.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.0"))
+.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.1"))
 ```
 
 ## 使用
@@ -270,7 +270,7 @@ MIT — [LICENSE](LICENSE)
 
 [한국어](#korean) · [English](#english) · [日本語](#japanese) · [简体中文](#chinese-simplified) · **繁體中文**
 
-> **基準日：** 2026-11-22 · 0.1.0 · 需要管理者密碼的安裝在實機驗證之前預設關閉。
+> **基準日：** 2026-11-22 · 0.1.1 · 需要管理者密碼的安裝在實機驗證之前預設關閉。
 
 為透過 GitHub Releases 發佈的 macOS App 準備的小型 App 內更新元件。只有使用者按下［安裝］時才會下載，並且只有通過你團隊的 Developer ID 簽章、Apple 公證、Bundle ID、版本號與建置號提升的全部檢查，才會取代 App。
 
@@ -286,7 +286,7 @@ MIT — [LICENSE](LICENSE)
 ## 加入
 
 ```swift
-.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.0"))
+.package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.1.1"))
 ```
 
 ## 使用
