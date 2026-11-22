@@ -2,7 +2,20 @@
 
 > **기준일:** 2026-11-22 · Versions are Git tags (SwiftPM reads them directly). Newest first.
 
-## Unreleased
+## 0.1.2 — 2026-11-22
+
+Fixes from the code review of 2026-11-22 (claude-opus-5-5-review-2255).
+
+### Fixed
+- An app whose name has a composed character (é, Hangul, kana with dakuten) could never install an update: ZIPs from macOS hold the folder name decomposed (NFD) and the listing check compared it byte by byte with `appName` (usually NFC). The app-folder part is now compared in one normalization. ([#18](https://github.com/Hyunjin-Cho/OnePercent/issues/18))
+- `problems` reports an `appName` with characters GitHub changes in uploaded file names when no `assetName` is set — measured: `Café_1.6.zip` → `Cafe_1.6.zip`, `닦아_1.6.zip` → `_1.6.zip`. ([#18](https://github.com/Hyunjin-Cho/OnePercent/issues/18))
+- Another launch of the app during a user-path swap could delete the staging copy (it carried the ZIP's old modification time) and fail the update. The staging is now a fresh folder holding the copy. ([#19](https://github.com/Hyunjin-Cho/OnePercent/issues/19))
+- A user's Check Now while the app holds the shared `OperationGate` now shows `.busy` instead of nothing. ([#22](https://github.com/Hyunjin-Cho/OnePercent/issues/22))
+- A broken `versionSuffixInfoKey` value no longer falls back to the version without the suffix (which offered the running hotfix as new); it is reported as `badConfiguration`, naming the key. ([#23](https://github.com/Hyunjin-Cho/OnePercent/issues/23))
+
+### Tools
+- `onepercent-check` takes the app's own settings: `--asset-name`, `--no-build-increase`, `--max-asset-mb`, `--max-entries`, `--max-unpacked-mb`, `--unpack-seconds`; the release check also compares the ZIP's size with `limits.maxAssetBytes`. ([#20](https://github.com/Hyunjin-Cho/OnePercent/issues/20))
+- `TestApp/make-app.sh` validates its arguments before removing anything. ([#21](https://github.com/Hyunjin-Cho/OnePercent/issues/21))
 
 ### Project
 - `TestApp/`: **OnePercentTestApp** and `make-app.sh` for the real-Mac cases — driven by buttons or launch arguments, every step logged. Results are in `docs/MANUAL-TEST.md`: cases 1 and 5–13 pass on macOS 27.2.1, including a real update with a notarized build (case 1) and a force quit in the middle of replacing that left the old app intact (case 7). The administrator path (cases 2–4b) still needs a person. ([#15](https://github.com/Hyunjin-Cho/OnePercent/issues/15))
