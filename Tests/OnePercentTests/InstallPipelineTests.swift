@@ -271,7 +271,11 @@ import Testing
                 installedDuringCheck = Fixture.marker(installed)
                 return accept && expected == identity
             }) == nil
-            #expect(checked.count == 1 && checked[0].path != incoming.path && checked[0].deletingLastPathComponent().path == installed.deletingLastPathComponent().path,
+            // 2026-11-22 (#19): 사본은 설치된 앱 옆의 새 staging 폴더 안에 있다.
+            let stagingFolder = checked.first?.deletingLastPathComponent()
+            #expect(checked.count == 1 && checked[0].path != incoming.path
+                    && stagingFolder?.deletingLastPathComponent().path == installed.deletingLastPathComponent().path
+                    && stagingFolder?.lastPathComponent.hasPrefix(UpdateReplacement.stagingPrefix(for: installed)) == true,
                     "the copy next to the installed app is re-checked, not the temporary original")
             #expect(installedDuringCheck == "old", "nothing touched before the check")
             #expect(thrown == !accept)
@@ -290,6 +294,32 @@ import Testing
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: copy)
         #expect(!UpdateReplacement.copyMatchesIdentity(at: link, identity: identity))
         #expect(!UpdateReplacement.isIntactCopy(at: copy, identity: identity, requirement: requirement), "real codesign refuses an unsigned copy")
+    }
+
+    /// 2026-11-22 (#19): 한 시간 전에 빌드된 앱을 교체하는 도중 같은 앱이 또 실행돼 시작 정리(10분 기준)가 돌아도
+    /// 진행 중인 staging 은 남고 교체는 끝난다. 예전엔 사본이 원본의 옛 시각을 물려받아 지워졌고 교체가 실패했다.
+    @Test func aSwapInProgressSurvivesALaunchCleanup() throws {
+        let root = try Fixture.temporaryRoot("swap-age")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fm = FileManager.default
+        let installed = try Fixture.makeApp(root.appendingPathComponent("Applications/TestApp.app"), version: "1.0", build: "1", marker: "old")
+        let incoming = try Fixture.makeApp(root.appendingPathComponent("extract/TestApp.app"), version: "1.1", build: "2", marker: "new")
+        let hourAgo = Date().addingTimeInterval(-3600)
+        for path in [incoming.path, incoming.appendingPathComponent("Contents").path] {
+            try fm.setAttributes([.modificationDate: hourAgo], ofItemAtPath: path)
+        }
+        var removedDuringSwap = -1
+        try UpdateReplacement.replaceAtomically(destination: installed,
+                                                with: VerifiedUpdate(app: incoming, identity: VerifiedIdentity(bundleID: Fixture.bundleID,
+                                                                                                                version: "1.1", build: "2")),
+                                                requirement: "unused") { _, _ in
+            removedDuringSwap = UpdateReplacement.removeLeftovers(installedApp: installed, workPrefix: "OnePercent-none-",
+                                                                  temporaryDirectory: root.appendingPathComponent("extract"))
+            return true
+        }
+        #expect(removedDuringSwap == 0, "the staging folder of the swap in progress is younger than ten minutes")
+        #expect(Fixture.marker(installed) == "new")
+        #expect((try fm.contentsOfDirectory(atPath: installed.deletingLastPathComponent().path)) == ["TestApp.app"], "no staging left")
     }
 
     /// The public entry point an app's own uninstaller calls.
