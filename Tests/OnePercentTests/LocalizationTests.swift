@@ -19,8 +19,11 @@ import Testing
         return result
     }
 
+    /// 2026-11-22 (#10): 대소문자는 보지 않는다. SwiftPM 의 예전 빌드 시스템(Swift 6.3 이하 — CI 의 Xcode 26.6)은 `.lproj` 이름을
+    /// 소문자로 담고(`pt-br.lproj`), Swift Build(Swift 6.4 기본)와 Xcode 앱 빌드(PomoLight)는 그대로 둔다(`pt-BR.lproj`).
+    /// 어느 쪽이든 고르는 언어는 같았다(CI: `pt-BR` → `pt-br`, `fr-CA` → `fr`).
     @Test func sameLanguagesAsPomoLight() {
-        #expect(Set(L10n.available) == Set(Self.languages), "\(L10n.available.sorted())")
+        #expect(Set(L10n.available.map { $0.lowercased() }) == Set(Self.languages.map { $0.lowercased() }), "\(L10n.available.sorted())")
     }
 
     @Test(arguments: languages) func sameKeysAndPlaceholders(_ language: String) throws {
@@ -36,15 +39,17 @@ import Testing
         }
     }
 
+    /// Case is not compared — see ``sameLanguagesAsPomoLight()``.
     @Test func languageMatching() {
-        #expect(L10n.table("ko").language == "ko")
-        #expect(L10n.table("ko-KR").language == "ko")
-        #expect(L10n.table("pt-BR").language == "pt-BR")
-        #expect(L10n.table("pt-PT").language == "pt-PT")
-        #expect(L10n.table("zh-Hant-TW").language == "zh-Hant")
-        #expect(L10n.table("zh-Hans-CN").language == "zh-Hans")
-        #expect(L10n.table("fr-CA").language == "fr")
-        #expect(L10n.table("xx").language == "en", "unknown languages fall back to English")
+        func matched(_ code: String) -> String { L10n.table(code).language.lowercased() }
+        #expect(matched("ko") == "ko")
+        #expect(matched("ko-KR") == "ko")
+        #expect(matched("pt-BR") == "pt-br")
+        #expect(matched("pt-PT") == "pt-pt")
+        #expect(matched("zh-Hant-TW") == "zh-hant")
+        #expect(matched("zh-Hans-CN") == "zh-hans")
+        #expect(matched("fr-CA") == "fr")
+        #expect(matched("xx") == "en", "unknown languages fall back to English")
     }
 
     @Test(arguments: languages) func everyErrorRenders(_ language: String) {

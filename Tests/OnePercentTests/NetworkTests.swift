@@ -76,6 +76,13 @@ import Testing
     }
     var keys: OnePercentUpdater.Keys { OnePercentUpdater.Keys("OnePercent.") }
 
+    /// The error `body` throws, or `nil`.
+    /// 2026-11-22 (#10): Swift 6.0(Xcode 16.0)은 이 @MainActor 묶음 안의 `await #expect(throws:) { … }` 를
+    /// "sending main actor-isolated value … risks causing data races" 로 거부했다. 오류를 먼저 받아 두고 보통의 #expect 로 본다.
+    func thrownError(_ body: () async throws -> Void) async -> (any Error)? {
+        do { try await body(); return nil } catch { return error }
+    }
+
     // MARK: - Checking and announcing
 
     @Test func automaticCheckAnnouncesOncePerVersion() async {
@@ -344,7 +351,8 @@ import Testing
         let file = root.appendingPathComponent("update.zip")
         for length in [nil, 64 * 1024] as [Int?] {
             NetworkStub.set("/t", .init(body: Data(repeating: 1, count: 40 * 64 * 1024), chunkSize: 64 * 1024, contentLength: length))
-            await #expect(throws: OnePercentError.responseTooLarge(128 * 1024)) { _ = try await receive(limit: 128 * 1024, to: file) }
+            let tooLarge = await thrownError { _ = try await receive(limit: 128 * 1024, to: file) }
+            #expect(tooLarge as? OnePercentError == .responseTooLarge(128 * 1024), "\(String(describing: tooLarge))")
             #expect(!FileManager.default.fileExists(atPath: file.path), "partial file removed (length \(String(describing: length)))")
         }
 
@@ -355,23 +363,29 @@ import Testing
         #expect(saved.sha256 == SHA256.hash(data: body).map { String(format: "%02x", $0) }.joined(), "hashed while receiving")
         let mode = (try FileManager.default.attributesOfItem(atPath: file.path)[.posixPermissions]) as? Int
         #expect(mode == 0o600)
-        await #expect(throws: (any Error).self) { _ = try await receive(limit: 1 << 20, to: file) }
+        let existing = await thrownError { _ = try await receive(limit: 1 << 20, to: file) }
+        #expect(existing != nil, "refused: the file already exists")
         #expect((try? Data(contentsOf: file)) == body, "an existing file is never overwritten")
         try FileManager.default.removeItem(at: file)
 
         NetworkStub.set("/t", .init(body: body, chunkSize: 1000, failAfterChunks: 3))
-        await #expect(throws: (any Error).self) { _ = try await receive(limit: 1 << 20, to: file) }
+        let lost = await thrownError { _ = try await receive(limit: 1 << 20, to: file) }
+        #expect(lost != nil, "a lost connection fails")
         #expect(!FileManager.default.fileExists(atPath: file.path), "connection lost: partial file removed")
 
         for (address, shown) in [("http://api.github.com/t", "http://api.github.com"), ("https://example.com/t", "https://example.com")] {
-            await #expect(throws: OnePercentError.redirectBlocked(shown)) { _ = try await receive(URL(string: address)!) }
+            let blocked = await thrownError { _ = try await receive(URL(string: address)!) }
+            #expect(blocked as? OnePercentError == .redirectBlocked(shown), "\(address): \(String(describing: blocked))")
         }
         NetworkStub.set("/target", .init(body: chunk))
         for (target, allowed) in [("https://release-assets.githubusercontent.com/target", true),
                                   ("https://example.com/target", false), ("http://github.com/target", false)] {
             NetworkStub.set("/t", .init(redirect: URL(string: target)!))
             if allowed { #expect(try await receive().data == chunk, "\(target)") }
-            else { await #expect(throws: OnePercentError.redirectBlocked(ReleaseDecision.display(target))) { _ = try await receive() } }
+            else {
+                let blocked = await thrownError { _ = try await receive() }
+                #expect(blocked as? OnePercentError == .redirectBlocked(ReleaseDecision.display(target)), "\(target): \(String(describing: blocked))")
+            }
         }
     }
 
@@ -388,7 +402,8 @@ import Testing
         }
         await waitUntil { NetworkStub.isHolding }
         pending.cancel()
-        await #expect(throws: CancellationError.self) { _ = try await pending.value }
+        let stopped = await thrownError { _ = try await pending.value }
+        #expect(stopped is CancellationError, "\(String(describing: stopped))")
         #expect(!FileManager.default.fileExists(atPath: file.path))
         NetworkStub.release()
         for _ in 0..<10 {
@@ -397,7 +412,8 @@ import Testing
                 return try await UpdateTransport.receive(URLRequest(url: URL(string: "https://api.github.com/t")!), configuration: configuration,
                                                          limit: 1 << 20, allowedHosts: OnePercentConfiguration.githubHosts, destination: file)
             }
-            await #expect(throws: CancellationError.self) { _ = try await early.value }
+            let stopped = await thrownError { _ = try await early.value }
+            #expect(stopped is CancellationError, "\(String(describing: stopped))")
             #expect(!FileManager.default.fileExists(atPath: file.path))
         }
     }
