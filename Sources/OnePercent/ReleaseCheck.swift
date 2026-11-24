@@ -46,6 +46,7 @@ public enum OnePercentReleaseCheck {
             var input = UpdateVerifier.Input(zip: zip, workDir: work, configuration: configuration,
                                              currentVersion: previousVersion ?? "0", currentBuild: previousBuild, releaseVersion: version)
             input.checkIncrease = previousVersion != nil
+            input.system = nil   // #33: the developer's Mac says nothing about users' Macs
             let checks = checkSignature ? BundleChecks.live : BundleChecks(signedByTeam: { _, _ in true }, codesignValid: { _, _ in true },
                                                                          notarizationAccepted: { _ in true })
             let verified = try UpdateVerifier.extractAndVerify(input, checks: checks)

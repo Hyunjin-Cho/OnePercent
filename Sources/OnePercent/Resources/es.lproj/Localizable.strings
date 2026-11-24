@@ -54,6 +54,8 @@
 "error.quitCancelled" = "La nueva versión se abrió, pero la copia anterior de la app no se cerró. Ciérrala tú mismo.";
 "error.fileSystem" = "Falló una operación con archivos: %@";
 "error.administratorInstallDisabled" = "Esta copia de la app solo puede reemplazarse con una contraseña de administrador, así que no se instaló desde la app. Descarga la nueva versión desde la página de la versión y reemplaza la app tú mismo.";
+"error.requiresNewerSystem" = "La versión %1$@ requiere macOS %2$@ o posterior, así que no se instaló (este Mac: macOS %3$@).";
+"error.unsupportedProcessor" = "La versión %@ no funciona con el procesador de este Mac, así que no se instaló.";
 "archive.unreadable" = "no se pudo leer la lista del ZIP";
 "archive.empty" = "el archivo comprimido está vacío";
 "archive.tooManyEntries" = "demasiados elementos (%1$@, máx. %2$@)";

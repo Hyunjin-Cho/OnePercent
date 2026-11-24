@@ -54,6 +54,8 @@
 "error.quitCancelled" = "De nieuwe versie is geopend, maar de vorige kopie van de app is niet gestopt. Stop die zelf.";
 "error.fileSystem" = "Een bestandsbewerking is mislukt — %@";
 "error.administratorInstallDisabled" = "Deze kopie van de app kan alleen met een beheerderswachtwoord worden vervangen en is daarom niet vanuit de app geïnstalleerd. Download de nieuwe versie van de releasepagina en vervang de app zelf.";
+"error.requiresNewerSystem" = "Versie %1$@ vereist macOS %2$@ of nieuwer en is daarom niet geïnstalleerd (deze Mac: macOS %3$@).";
+"error.unsupportedProcessor" = "Versie %@ werkt niet op de processor van deze Mac en is daarom niet geïnstalleerd.";
 "archive.unreadable" = "de ZIP-lijst kon niet worden gelezen";
 "archive.empty" = "het archief is leeg";
 "archive.tooManyEntries" = "te veel onderdelen (%1$@, max. %2$@)";

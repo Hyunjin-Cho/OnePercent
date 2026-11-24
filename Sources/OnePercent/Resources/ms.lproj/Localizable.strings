@@ -54,6 +54,8 @@
 "error.quitCancelled" = "Versi baharu telah dibuka, tetapi salinan app sebelumnya tidak keluar. Sila keluar daripadanya sendiri.";
 "error.fileSystem" = "Operasi fail gagal — %@";
 "error.administratorInstallDisabled" = "Salinan app ini hanya boleh diganti dengan kata laluan pentadbir, jadi ia tidak dipasang dari dalam app. Muat turun versi baharu dari halaman keluaran dan ganti app sendiri.";
+"error.requiresNewerSystem" = "Versi %1$@ memerlukan macOS %2$@ atau lebih baharu, jadi ia tidak dipasang (Mac ini: macOS %3$@).";
+"error.unsupportedProcessor" = "Versi %@ tidak berjalan pada pemproses Mac ini, jadi ia tidak dipasang.";
 "archive.unreadable" = "senarai ZIP tidak dapat dibaca";
 "archive.empty" = "arkib kosong";
 "archive.tooManyEntries" = "terlalu banyak item (%1$@, maks. %2$@)";

@@ -54,6 +54,8 @@
 "error.quitCancelled" = "Den nye versjonen ble åpnet, men den forrige kopien av appen ble ikke avsluttet. Avslutt den selv.";
 "error.fileSystem" = "En filoperasjon mislyktes – %@";
 "error.administratorInstallDisabled" = "Denne kopien av appen kan bare erstattes med et administratorpassord, så den ble ikke installert fra appen. Last ned den nye versjonen fra utgivelsessiden og erstatt appen selv.";
+"error.requiresNewerSystem" = "Versjon %1$@ krever macOS %2$@ eller nyere, så den ble ikke installert (denne Macen: macOS %3$@).";
+"error.unsupportedProcessor" = "Versjon %@ kjører ikke på prosessoren i denne Macen, så den ble ikke installert.";
 "archive.unreadable" = "ZIP-listen kunne ikke leses";
 "archive.empty" = "arkivet er tomt";
 "archive.tooManyEntries" = "for mange objekter (%1$@, maks. %2$@)";

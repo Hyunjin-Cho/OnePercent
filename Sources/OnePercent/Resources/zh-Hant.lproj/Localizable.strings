@@ -54,6 +54,8 @@
 "error.quitCancelled" = "新版本已開啟，但先前的 App 沒有結束。請手動結束先前的 App。";
 "error.fileSystem" = "檔案作業失敗 — %@";
 "error.administratorInstallDisabled" = "此位置的 App 需要管理者密碼才能替換，因此沒有在 App 內安裝。請從發佈頁面下載新版本並手動替換。";
+"error.requiresNewerSystem" = "版本 %1$@ 需要 macOS %2$@ 或以上版本，因此沒有安裝（此 Mac：macOS %3$@）。";
+"error.unsupportedProcessor" = "版本 %@ 無法在此 Mac 的處理器上執行，因此沒有安裝。";
 "archive.unreadable" = "無法讀取 ZIP 清單";
 "archive.empty" = "壓縮檔是空的";
 "archive.tooManyEntries" = "項目過多（%1$@ 個，最多 %2$@ 個）";

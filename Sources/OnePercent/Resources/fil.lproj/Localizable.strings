@@ -54,6 +54,8 @@
 "error.quitCancelled" = "Nabuksan na ang bagong bersyon, pero hindi nag-quit ang dating kopya ng app. Paki-quit ito nang manu-mano.";
 "error.fileSystem" = "Nabigo ang isang operasyon sa file — %@";
 "error.administratorInstallDisabled" = "Mapapalitan lang ang kopyang ito ng app gamit ang password ng administrator, kaya hindi ito na-install mula sa app. I-download ang bagong bersyon mula sa page ng release at palitan ang app nang manu-mano.";
+"error.requiresNewerSystem" = "Kailangan ng bersyong %1$@ ang macOS %2$@ o mas bago, kaya hindi ito na-install (Mac na ito: macOS %3$@).";
+"error.unsupportedProcessor" = "Hindi gumagana ang bersyong %@ sa processor ng Mac na ito, kaya hindi ito na-install.";
 "archive.unreadable" = "hindi mabasa ang listahan ng ZIP";
 "archive.empty" = "walang laman ang archive";
 "archive.tooManyEntries" = "masyadong maraming item (%1$@, max %2$@)";

@@ -54,6 +54,8 @@
 "error.quitCancelled" = "Versi baru sudah terbuka, tetapi salinan app sebelumnya tidak keluar. Silakan keluarkan sendiri.";
 "error.fileSystem" = "Operasi file gagal — %@";
 "error.administratorInstallDisabled" = "Salinan app ini hanya dapat diganti dengan kata sandi administrator, jadi tidak diinstal dari dalam app. Unduh versi baru dari halaman rilis, lalu ganti app sendiri.";
+"error.requiresNewerSystem" = "Versi %1$@ memerlukan macOS %2$@ atau yang lebih baru, jadi tidak diinstal (Mac ini: macOS %3$@).";
+"error.unsupportedProcessor" = "Versi %@ tidak berjalan di prosesor Mac ini, jadi tidak diinstal.";
 "archive.unreadable" = "daftar ZIP tidak dapat dibaca";
 "archive.empty" = "arsip kosong";
 "archive.tooManyEntries" = "terlalu banyak item (%1$@, maks. %2$@)";

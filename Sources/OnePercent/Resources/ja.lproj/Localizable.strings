@@ -54,6 +54,8 @@
 "error.quitCancelled" = "新しいバージョンは開きましたが、以前のアプリが終了しませんでした。以前のアプリを手動で終了してください。";
 "error.fileSystem" = "ファイル操作に失敗しました — %@";
 "error.administratorInstallDisabled" = "この場所のアプリは管理者パスワードがないと置き換えられないため、アプリ内ではインストールしませんでした。リリースページから新しいバージョンをダウンロードし、手動で置き換えてください。";
+"error.requiresNewerSystem" = "バージョン %1$@ には macOS %2$@ 以降が必要なため、インストールしませんでした（この Mac：macOS %3$@）。";
+"error.unsupportedProcessor" = "バージョン %@ はこの Mac のプロセッサでは動作しないため、インストールしませんでした。";
 "archive.unreadable" = "ZIP の一覧を読み取れない";
 "archive.empty" = "圧縮ファイルが空";
 "archive.tooManyEntries" = "項目が多すぎる（%1$@ 個、最大 %2$@ 個）";

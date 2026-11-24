@@ -42,7 +42,7 @@ import Testing
     @Test func storedKeysUseThePrefix() {
         var c = config; c.defaultsKeyPrefix = "pomolight.update."
         let keys = OnePercentUpdater.storedKeys(configuration: c)
-        #expect(keys.count == 5 && keys.allSatisfy { $0.hasPrefix("pomolight.update.") })
+        #expect(keys.count == 6 && keys.allSatisfy { $0.hasPrefix("pomolight.update.") })
     }
 
     // MARK: - Schedule

@@ -86,6 +86,8 @@ enum UpdateVerifier {
         let releaseVersion: String
         /// Compare against the running version and build. Only the release checker turns this off when it has no previous release.
         var checkIncrease: Bool = true
+        /// The Mac the new version must run on (#33). `nil` skips the check — the release checker runs on the developer's Mac.
+        var system: SystemProfile? = .current
     }
 
     static func extractAndVerify(_ input: Input, checks: BundleChecks = .live) throws -> VerifiedUpdate {
@@ -145,6 +147,11 @@ enum UpdateVerifier {
         guard failures.isEmpty else { throw OnePercentError.verificationFailed(failures) }
         guard let shortVersion = info?["CFBundleShortVersionString"] as? String, let build else {
             throw OnePercentError.verificationFailed([.versionUnreadable])
+        }
+        // 2026-11-24 (#33): 진짜 우리 새 버전이라는 게 확인된 다음에, 이 Mac 에서 열릴 수 있는지 본다. 열 수 없으면 바꿔 끼우지 않는다.
+        if let system = input.system,
+           let problem = Compatibility.problem(info: info, app: app, version: input.releaseVersion, system: system) {
+            throw problem
         }
         // 검증을 통과한 우리 번들이므로 격리 속성을 벗긴다(App Translocation 방지). URLSession 다운로드엔 보통 붙지 않지만 붙어 있어도 되게.
         stripQuarantine(at: app)

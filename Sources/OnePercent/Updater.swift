@@ -17,7 +17,8 @@ extension UserDefaults: OnePercentStore {}
 /// Security boundary: **this replaces your app with a file from the internet.** So:
 /// - Nothing touches the installed app before every check passes: archive listing and limits, a real folder, the bundle ID,
 ///   your Team's Apple-issued signature (Security.framework and `codesign --deep --strict`), notarization (`spctl`),
-///   a higher version and build, and the exact version that was announced.
+///   a higher version and build, the exact version that was announced, and that this Mac can open it (its
+///   `LSMinimumSystemVersion` and processors — #33; a version that cannot run here is not offered again on this Mac).
 /// - The old app is never deleted first. The new one is staged next to it and swapped in one step, or (administrator path)
 ///   moved aside as a backup that is restored if placing the new one fails.
 /// - Tools run with argument arrays. The single shell command (administrator path) quotes every path.
@@ -126,15 +127,26 @@ public final class OnePercentUpdater {
     // MARK: - Stored values
 
     struct Keys {
-        let automaticChecks, lastCheck, latestVersion, lastNotifiedVersion, lastLaunchedVersion: String
+        let automaticChecks, lastCheck, latestVersion, lastNotifiedVersion, lastLaunchedVersion, incompatibleUpdate: String
         init(_ prefix: String) {
             automaticChecks = prefix + "automaticChecks"
             lastCheck = prefix + "lastCheck"
             latestVersion = prefix + "latestVersion"
             lastNotifiedVersion = prefix + "lastNotifiedVersion"
             lastLaunchedVersion = prefix + "lastLaunchedVersion"
+            incompatibleUpdate = prefix + "incompatibleUpdate"
         }
-        var all: [String] { [automaticChecks, lastCheck, latestVersion, lastNotifiedVersion, lastLaunchedVersion] }
+        var all: [String] { [automaticChecks, lastCheck, latestVersion, lastNotifiedVersion, lastLaunchedVersion, incompatibleUpdate] }
+    }
+
+    /// A version found unable to run on this Mac (#33), while it still applies here.
+    private var incompatible: IncompatibleRecord? {
+        IncompatibleRecord(stored: store.object(forKey: keys.incompatibleUpdate)).flatMap { $0.applies(to: environment.system) ? $0 : nil }
+    }
+
+    /// `version` is the version this Mac cannot run.
+    private func isIncompatible(_ version: String) -> Bool {
+        incompatible.map { configuration.versionScheme.isSame($0.version, version) } ?? false
     }
 
     private var keys: Keys { Keys(configuration.defaultsKeyPrefix) }
@@ -202,7 +214,8 @@ public final class OnePercentUpdater {
     }
 
     private var storedLatestIsNewer: Bool {
-        latestVersion.map { configuration.versionScheme.isNewer($0, than: effectiveInstalledVersion) } ?? false
+        // 2026-11-24 (#33): 이 Mac 에서 열 수 없다고 확인된 버전이면 다시 켠 뒤에도 설치 버튼을 내지 않는다.
+        latestVersion.map { configuration.versionScheme.isNewer($0, than: effectiveInstalledVersion) && !isIncompatible($0) } ?? false
     }
 
     public var presentation: UpdateStatusPresentation {
@@ -346,9 +359,17 @@ public final class OnePercentUpdater {
             let installed = effectiveInstalledVersion
             if let update = ReleaseDecision.availableUpdate(currentVersion: installed, release: release, configuration: effectiveConfiguration) {
                 recordSuccessfulCheck(latest: releaseVersion)
-                phase = .available(update)
-                onePercentLog.notice("update available: \(update.tag, privacy: .public) (installed \(installed, privacy: .public))")
-                announce(update, userInitiated: userInitiated, showNotice: showNotice)
+                if let record = incompatible, configuration.versionScheme.isSame(record.version, update.version) {
+                    // 2026-11-24 (#33): 이 Mac 에서 열 수 없다고 이미 확인한 버전 — 다시 권하지도 알리지도 않고, 이유만 남긴다.
+                    phase = .upToDate
+                    lastError = record.error(on: environment.system)
+                } else {
+                    // 더 새 버전이 나왔거나 이 Mac 이 바뀌었다(macOS 업데이트) — 기록은 더 쓸모가 없다.
+                    store.removeObject(forKey: keys.incompatibleUpdate)
+                    phase = .available(update)
+                    onePercentLog.notice("update available: \(update.tag, privacy: .public) (installed \(installed, privacy: .public))")
+                    announce(update, userInitiated: userInitiated, showNotice: showNotice)
+                }
             } else if configuration.versionScheme.isNewer(releaseVersion, than: installed) {
                 // 2026-11-20 (Fable 리뷰): 새 태그는 있는데 받을 파일이 아직 없다. 확인 시각을 남기면 다음 주기(최대 한 달)까지 다시 묻지 않으므로
                 // 남기지 않는다 — 다음 정시 틱에 다시 확인한다.
@@ -495,9 +516,10 @@ public final class OnePercentUpdater {
             try Task.checkCancellation()
 
             phase = .verifying
-            let input = UpdateVerifier.Input(zip: zip, workDir: workDir, configuration: configuration,
+            var input = UpdateVerifier.Input(zip: zip, workDir: workDir, configuration: configuration,
                                              currentVersion: currentVersion, currentBuild: environment.currentBuild(),
                                              releaseVersion: update.version)
+            input.system = environment.system
             let checks = environment.checks
             // 2026-11-20 (리뷰 P2-3): detached 작업은 부모의 취소를 물려받지 않는다 — 취소를 직접 넘긴다.
             // 검증 쪽은 풀기 감시 루프와 검사 사이에서 취소를 본다.
@@ -542,6 +564,10 @@ public final class OnePercentUpdater {
                 // 같은 버전을 또 설치하라고 권하지 않도록 이 실행에서 설치한 버전을 기억한다.
                 installedThisRun = update.version
                 phase = .idle
+            } else if let record = IncompatibleRecord(error: described, system: environment.system) {
+                // 2026-11-24 (#33): 이 Mac 에서 열리지 않는 버전 — 설치 버튼을 거두고, 다음 확인들이 다시 권하지 않게 기억한다.
+                store.set(record.stored, forKey: keys.incompatibleUpdate)
+                phase = .upToDate
             } else {
                 phase = .available(update)
             }
@@ -630,6 +656,8 @@ extension OnePercentUpdater {
         var relaunch: @MainActor (URL) async throws -> Void
         /// The wait before the first background check after ``OnePercentUpdater/startAutomaticChecks()``.
         var firstCheckDelay: Duration = .seconds(15)
+        /// This Mac, for the "can the new version run here" check (#33).
+        var system: SystemProfile = .current
 
         static var live: Environment {
             Environment(
