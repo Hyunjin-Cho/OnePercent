@@ -51,7 +51,9 @@ public struct OnePercentConfiguration: Sendable {
     public var userAgent: String?
     /// Size and time limits for the download and the archive.
     public var limits: Limits
-    /// Hosts that requests and redirects may reach. HTTPS only.
+    /// Hosts that requests and redirects may reach. HTTPS only. `*.example.com` allows every host below `example.com`.
+    /// The release ZIP's own address must still be `github.com/<repository>/releases/download/…`; this list is about where
+    /// GitHub may redirect it.
     public var allowedHosts: Set<String>
     /// Allow the administrator-password install (an app the user cannot write, for example installed with `sudo` or used
     /// from a standard account). Default: `false`.
@@ -102,15 +104,31 @@ public struct OnePercentConfiguration: Sendable {
         self.allowsAdministratorInstall = false
     }
 
-    /// GitHub's API host, the release page host and the asset CDN hosts.
+    /// GitHub's API host, the release page host and every host below `githubusercontent.com` (where release downloads redirect).
     /// 2026-09-21 실측(하늘키보드): `github.com/…/releases/download/…` → 302 → `release-assets.githubusercontent.com`.
-    /// `objects.githubusercontent.com` 도 남겨 둔다 — GitHub 가 자산 CDN 을 바꿔도 한쪽은 맞게.
+    /// 2026-11-24 (#36): 자산 CDN 두 이름(`objects.`·`release-assets.`)만 적어 두면, GitHub 가 세 번째 이름으로 옮길 때 나간 앱 전부가
+    /// 내려받지 못한다. 하위 호스트 전체로 넓혔다 — 자산 주소 자체는 여전히 github.com 의 저장소 경로여야 하고(selectAsset),
+    /// 무엇이 설치되는지는 서명·공증 검사가 정한다.
     public static let githubHosts: Set<String> = [
         "github.com",
         "api.github.com",
-        "objects.githubusercontent.com",
-        "release-assets.githubusercontent.com",
+        "*.githubusercontent.com",
     ]
+
+    /// The `.example.com` part of a `*.example.com` entry, or `nil` when the entry is not a wildcard.
+    static func wildcardSuffix(_ entry: String) -> String? {
+        guard entry.hasPrefix("*.") else { return nil }
+        return String(entry.dropFirst(1)).lowercased()
+    }
+
+    /// An allowed-host entry: a lowercase host name, or `*.` followed by one with at least two labels (`*.com` is too wide).
+    static func isValidHostEntry(_ entry: String) -> Bool {
+        let name = entry.hasPrefix("*.") ? String(entry.dropFirst(2)) : entry
+        let labels = name.split(separator: ".", omittingEmptySubsequences: false)
+        guard !name.isEmpty, name.count <= 253, labels.allSatisfy({ !$0.isEmpty && $0.count <= 63 }),
+              name.allSatisfy({ $0.isASCII && ($0.isLowercase || $0.isNumber || $0 == "." || $0 == "-") }) else { return false }
+        return !entry.hasPrefix("*.") || labels.count >= 2
+    }
 
     /// The `.app` folder name inside the release ZIP.
     public var appFolderName: String { appName + ".app" }
@@ -135,6 +153,9 @@ public struct OnePercentConfiguration: Sendable {
         }
         if tagPrefix.contains(where: { !Self.isTagCharacter($0) }) { list.append("tagPrefix has unsupported characters") }
         if allowedHosts.isEmpty { list.append("allowedHosts is empty") }
+        if let bad = allowedHosts.sorted().first(where: { !Self.isValidHostEntry($0) }) {
+            list.append("allowedHosts entry \"\(bad)\" must be a lowercase host name, or *. and a name with at least two labels")
+        }
         if limits.maxAssetBytes <= 0 || limits.maxMetadataBytes <= 0 { list.append("limits must be positive") }
         return list
     }

@@ -98,4 +98,32 @@ import Testing
         var bad = config; bad.repository = "evil/../repo"
         #expect(ReleaseDecision.releasePageURL(tag: "1.1", configuration: bad) == nil)
     }
+
+    /// 2026-11-24 (#36): any host below githubusercontent.com — and nothing that only looks like one.
+    @Test func wildcardHosts() {
+        for allowed in ["https://release-assets.githubusercontent.com/a", "https://objects.githubusercontent.com/a",
+                        "https://a-future-cdn.githubusercontent.com/a", "https://Deep.Sub.GitHubUserContent.com/a",
+                        "https://github.com/a", "https://api.github.com/a"] {
+            #expect(ReleaseDecision.isAllowedURL(URL(string: allowed)!, hosts: hosts), "\(allowed)")
+        }
+        for refused in ["https://githubusercontent.com/a", "https://evilgithubusercontent.com/a",
+                        "https://githubusercontent.com.evil.example/a", "http://objects.githubusercontent.com/a",
+                        "https://gist.github.com/a", "https://evil.example/a.githubusercontent.com"] {
+            #expect(!ReleaseDecision.isAllowedURL(URL(string: refused)!, hosts: hosts), "\(refused)")
+        }
+        #expect(!ReleaseDecision.isAllowedURL(URL(string: "https://objects.githubusercontent.com/a")!,
+                                              hosts: ["github.com", "api.github.com", "release-assets.githubusercontent.com"]),
+                "a list without the wildcard still matches exactly")
+    }
+
+    @Test func hostEntriesAreChecked() {
+        for good: Set<String> in [OnePercentConfiguration.githubHosts, ["example.com"], ["*.cdn.example.com", "example.com"]] {
+            var configuration = config; configuration.allowedHosts = good
+            #expect(configuration.problems.isEmpty, "\(good)")
+        }
+        for bad: Set<String> in [["*.com"], ["*"], ["GitHub.com"], ["exa mple.com"], ["*.example..com"], [".example.com"], ["https://example.com"]] {
+            var configuration = config; configuration.allowedHosts = bad
+            #expect(configuration.problems.contains { $0.hasPrefix("allowedHosts entry") }, "\(bad)")
+        }
+    }
 }
