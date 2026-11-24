@@ -91,7 +91,8 @@ enum Probe {
 
     static func report(_ step: String) {
         let error = updater.presentation.errorText.map { " error=\($0)" } ?? ""
-        log("\(step): phase=\(describe(updater.phase)) latest=\(updater.latestVersion ?? "nil")\(error)")
+        // 2026-11-24 (#33): whether an install button would show — a version this Mac cannot open must not get one.
+        log("\(step): phase=\(describe(updater.phase)) latest=\(updater.latestVersion ?? "nil") installButton=\(updater.presentation.showsInstallButton)\(error)")
     }
 
     /// Logs every phase change (download progress in steps of 10 %) and presses Cancel for `--cancel-at`.
