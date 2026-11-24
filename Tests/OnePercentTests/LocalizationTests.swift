@@ -74,6 +74,72 @@ import Testing
         }
     }
 
+    // MARK: - Resource bundle (#34)
+
+    /// 2026-11-24 (#34): `Bundle.module` 의 접근자는 묶음을 못 찾으면 앱을 끈다(native 빌드: `.app` 바로 옆과 개발 Mac 빌드 경로만 봄).
+    /// 소스 어디에서도 부르지 않는다 — 부르는 순간 그 앱은 묶음 자리가 맞지 않는 사용자 Mac 에서 꺼질 수 있다.
+    @Test func neverTouchesBundleModule() throws {
+        let sources = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Sources/OnePercent")
+        let files = try FileManager.default.contentsOfDirectory(at: sources, includingPropertiesForKeys: nil).filter { $0.pathExtension == "swift" }
+        #expect(files.count > 10, "\(sources.path)")
+        for file in files {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            let code = text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+            #expect(!code.contains { $0.contains("Bundle.module") }, "\(file.lastPathComponent)")
+        }
+    }
+
+    @Test func theBundleIsFoundWhileTesting() {
+        #expect(L10n.resources != nil, "candidates: \(ResourceBundle.candidates().map(\.path))")
+    }
+
+    @Test func theBuiltInEnglishIsTheEnglishFile() throws {
+        let english = try #require(L10n.rawStrings("en"))
+        #expect(EmbeddedEnglish.strings == english, "run scripts/embed-english.sh")
+    }
+
+    /// The places SwiftPM's two build systems and Xcode put the bundle: `Contents/Resources`, next to the app, next to a tool.
+    @Test func bundleIsFoundWhereBuildsPutIt() throws {
+        let root = try Fixture.temporaryRoot("bundle")
+        defer { try? FileManager.default.removeItem(at: root) }
+        func makeBundle(in folder: URL, nested: Bool) throws {
+            let base = folder.appendingPathComponent(ResourceBundle.name)
+            let strings = (nested ? base.appendingPathComponent("Contents/Resources") : base).appendingPathComponent("en.lproj")
+            try FileManager.default.createDirectory(at: strings, withIntermediateDirectories: true)
+            try Data("\"ui.checkNow\" = \"Check Now\";".utf8).write(to: strings.appendingPathComponent("Localizable.strings"))
+        }
+        let app = root.appendingPathComponent("Hand.app")
+        let resources = app.appendingPathComponent("Contents/Resources")
+        try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
+        let empty = root.appendingPathComponent("empty")
+        try FileManager.default.createDirectory(at: empty, withIntermediateDirectories: true)
+        #expect(ResourceBundle.locate(in: [empty, app, resources]) == nil, "nowhere yet")
+
+        try makeBundle(in: resources, nested: false)
+        #expect(ResourceBundle.locate(in: [empty, app, resources])?.bundleURL.standardizedFileURL.path
+                == resources.appendingPathComponent(ResourceBundle.name).standardizedFileURL.path, "Contents/Resources (README, Xcode)")
+
+        let native = root.appendingPathComponent("Native.app")
+        try FileManager.default.createDirectory(at: native, withIntermediateDirectories: true)
+        try makeBundle(in: native, nested: true)
+        #expect(ResourceBundle.locate(in: [empty, native]) != nil, "next to the app (SwiftPM native)")
+        #expect(ResourceBundle.locate(in: [native.appendingPathComponent(ResourceBundle.name)]) != nil, "the override names the bundle itself")
+
+        let hollow = root.appendingPathComponent("Hollow")
+        try FileManager.default.createDirectory(at: hollow.appendingPathComponent(ResourceBundle.name), withIntermediateDirectories: true)
+        #expect(ResourceBundle.locate(in: [hollow]) == nil, "a folder with that name but no English strings is not it")
+    }
+
+    /// Without a bundle the text is English from the code — never the key, never a crash.
+    @Test func withoutABundleTheTextIsEnglish() {
+        let table = L10n.Table(language: "en", bundle: nil)
+        #expect(table.text("ui.checkNow") == "Check Now")
+        #expect(table.text("status.error", "x") == "Update error: x")
+        #expect(OnePercentError.rateLimited.message(table) == EmbeddedEnglish.strings["error.rateLimited"])
+        #expect(table.text("no.such.key") == "no.such.key")
+    }
+
     @Test func updatedLine() {
         #expect(OnePercentText.updated(to: "1.0", table: L10n.table("ko")) == "1.0으로 업데이트했어요.")
         #expect(OnePercentText.updated(to: "2026.11.17", table: L10n.table("ko")) == "2026.11.17로 업데이트했어요.")
