@@ -141,6 +141,8 @@ struct ContentView: View {
                 }
                 if updater.presentation.showsCancelButton { Button(OnePercentText.cancel) { updater.cancel() } }
             }
+            // 2026-11-24 (#37): the ready-made section, so real-Mac runs show it too.
+            GroupBox { OnePercentUpdateSection(updater: updater).padding(6) }
             Text("Administrator install: \(Probe.allowsAdministratorInstall ? "on" : "off") · log: ~/Library/Logs/OnePercentTestApp.log")
                 .font(.caption).foregroundStyle(.secondary)
         }
