@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import SwiftUI
 import Testing
 @testable import OnePercent
 
@@ -648,6 +649,7 @@ import Testing
         let refusal = OnePercentError.requiresNewerSystem(version: "1.1", minimum: "28.0", running: "27.2.1")
         #expect(updater.lastError == refusal, "\(String(describing: updater.lastError))")
         #expect(updater.phase == .upToDate && !updater.presentation.showsInstallButton && !updater.presentation.showsMenuNotice)
+        #expect(UpdateSectionContent(updater: updater).headline == OnePercentText.installedVersion + " 1.0", "not \"up to date\" (#37)")
         #expect(Fixture.marker(release.installed) == "old" && h.relaunched.isEmpty && leftovers(release).isEmpty)
         #expect(IncompatibleRecord(stored: h.store.object(forKey: keys.incompatibleUpdate))?.version == "1.1")
 
@@ -690,6 +692,45 @@ import Testing
         await updater.installAvailableUpdate()
         #expect(updater.lastError == .unsupportedProcessor(version: "1.2"), "an Intel-only build on an Apple silicon Mac")
         #expect(updater.phase == .upToDate && Fixture.marker(release.installed) == "old")
+    }
+
+    // MARK: - The ready-made section (#37)
+
+    @Test func sectionWords() async {
+        NetworkStub.reset()
+        let h = Harness()
+        let updater = h.make()
+        var content = UpdateSectionContent(updater: updater)
+        #expect(content.headline == OnePercentText.installedVersion + " 1.0" && content.detail == OnePercentText.neverChecked)
+        #expect(content.releasePage == nil)
+
+        respond("1.1")
+        await updater.checkNow(showNotice: false)
+        content = UpdateSectionContent(updater: updater)
+        #expect(content.headline == OnePercentText.available)
+        #expect(content.detail == "\(OnePercentText.installedVersion) 1.0 · \(OnePercentText.latestVersion) 1.1")
+        #expect(content.releasePage?.absoluteString == "https://github.com/owner/TestApp/releases/tag/1.1")
+
+        respond("1.0")
+        await updater.checkNow()
+        content = UpdateSectionContent(updater: updater)
+        #expect(content.headline == OnePercentText.upToDate && content.detail == OnePercentText.lastChecked(h.now) && content.releasePage == nil)
+
+        h.store.set("0.9", forKey: keys.lastLaunchedVersion)
+        let reopened = h.make()
+        #expect(reopened.noteLaunch() == "1.0")
+        content = UpdateSectionContent(updater: reopened)
+        #expect(content.headline == OnePercentText.updated(to: "1.0"))
+        #expect(content.releasePage == reopened.releasePageURL(forVersion: "1.0") && content.releasePage != nil)
+    }
+
+    @Test func sectionRenders() {
+        let h = Harness()
+        for automatic in [true, false] {
+            let renderer = ImageRenderer(content: OnePercentUpdateSection(updater: h.make(), showsAutomaticChecksSwitch: automatic)
+                .frame(width: 420).padding())
+            #expect(renderer.nsImage != nil)
+        }
     }
 
     // MARK: - PR #1 code review follow-ups (2026-11-20)
