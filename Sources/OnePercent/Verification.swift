@@ -160,6 +160,12 @@ enum UpdateVerifier {
 
     /// Reads only the ZIP's central directory (at most 4 MiB) and judges it.
     static func inspectArchive(_ zip: URL, limits: ArchiveLimits, appFolder: String) throws {
+        let entries = try listing(zip)
+        if let problem = UpdateArchive.problem(entries, limits: limits, appFolder: appFolder) { throw OnePercentError.archiveRejected(problem) }
+    }
+
+    /// The ZIP's central directory (at most 4 MiB read), without unpacking anything.
+    static func listing(_ zip: URL) throws -> [ZipEntry] {
         do {
             let handle = try FileHandle(forReadingFrom: zip)
             defer { try? handle.close() }
@@ -176,7 +182,7 @@ enum UpdateVerifier {
                   let entries = UpdateArchive.entries(centralDirectory: directory, expectedCount: location.entries) else {
                 throw OnePercentError.archiveRejected(.unreadableListing)
             }
-            if let problem = UpdateArchive.problem(entries, limits: limits, appFolder: appFolder) { throw OnePercentError.archiveRejected(problem) }
+            return entries
         } catch let error as OnePercentError {
             throw error
         } catch {

@@ -733,6 +733,42 @@ import Testing
         }
     }
 
+    // MARK: - Checking the published release (#38)
+
+    /// The same request, asset choice, download checks and verification as apps.
+    @Test func checkPublishedSeesWhatAppsSee() async throws {
+        NetworkStub.reset()
+        let release = try makeRelease("published")
+        defer { try? FileManager.default.removeItem(at: release.root) }
+        let session = NetworkStub.session().configuration
+        func run() async -> OnePercentReleaseCheck.Report {
+            await OnePercentReleaseCheck.checkPublished(configuration: Fixture.configuration(), checkSignature: false,
+                                                        previousVersion: "1.0", previousBuild: "1", session: session)
+        }
+        serve(release)
+        var report = await run()
+        #expect(report.problems.isEmpty && report.tag == "1.1" && report.bundleVersion == "1.1", "\(report.problems)")
+        #expect(NetworkStub.lastHeaders(ReleaseJSON.apiPath)?["User-Agent"] == "onepercent-check")
+
+        serve(release, digest: String(repeating: "0", count: 64))
+        report = await run()
+        #expect(report.problems.count == 1 && report.problems[0].hasSuffix("(digestMismatch)"), "\(report.problems)")
+
+        respond("1.2", asset: false)
+        report = await run()
+        #expect(report.tag == "1.2" && report.problems.count == 1 && report.problems[0].contains("no asset named TestApp_1.2.zip"),
+                "\(report.problems)")
+
+        respond("1.1", status: 404)
+        report = await run()
+        #expect(report.problems.count == 1 && report.problems[0].hasSuffix("(noRelease)"), "\(report.problems)")
+
+        var broken = Fixture.configuration(); broken.repository = "not a repository"
+        report = await OnePercentReleaseCheck.checkPublished(configuration: broken, checkSignature: false, previousVersion: nil,
+                                                             previousBuild: nil, session: session)
+        #expect(report.problems == broken.problems && report.tag == nil)
+    }
+
     // MARK: - PR #1 code review follow-ups (2026-11-20)
 
     /// P1-2: after a relaunch only the stored latest version is known — Install asks GitHub again first, then installs.
