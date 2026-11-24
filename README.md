@@ -62,7 +62,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 
 업데이트는 사용자 Mac에 이미 깔린 **옛 버전**이 판단합니다. 그래서 아래를 어기면 이미 나간 앱의 업데이트가 조용히 끊깁니다.
 
-- 저장소(`repository`)·태그 꼴(`tagPrefix`)·자산 이름(`assetName`)·Team ID·번들 ID는 바꾸지 않습니다.
+- 저장소(`repository`)·태그 꼴(`tagPrefix`)·자산 이름(`assetName`)·앱 이름(`appName` — ZIP 안 `.app` 폴더 이름)·버전 규칙(`versionScheme`)·Team ID·번들 ID는 바꾸지 않습니다.
 - GitHub의 최신 릴리스는 늘 이 앱의 정식 릴리스여야 합니다. 초안·프리릴리스는 보지 않고, 다른 파일만 붙은 릴리스가 최신이면 "설치 파일이 준비되지 않았어요"가 계속됩니다.
 - 상한(`limits`)은 늘리기만 합니다 — 옛 버전은 옛 상한으로 새 ZIP을 봅니다.
 - 최소 macOS를 올리거나 프로세서를 빼기 전에, OnePercent 0.2.0 이상을 쓴 버전이 먼저 나가 있어야 합니다. 그보다 옛 버전은 열리지 않는 새 버전도 그대로 설치합니다.
@@ -144,7 +144,7 @@ If it passes, publish a GitHub release with tag `1.2` and attach the ZIP. If you
 
 Updates are judged by the **old version** already on users' Macs. Break one of these and the apps already out stop updating, without a word.
 
-- Never change the repository, the tag form (`tagPrefix`), the asset name (`assetName`), the Team ID or the bundle ID.
+- Never change the repository, the tag form (`tagPrefix`), the asset name (`assetName`), the app name (`appName` — the `.app` folder in the ZIP), the version scheme (`versionScheme`), the Team ID or the bundle ID.
 - The latest GitHub release must always be this app's real release. Drafts and pre-releases are ignored; if the latest release carries other files only, apps keep saying the installer isn't ready.
 - Only ever raise `limits` — old versions judge a new ZIP by their own limits.
 - Before raising the minimum macOS or dropping a processor, have a version with OnePercent 0.2.0 or later out first. Older versions install a new version even when it cannot open.
@@ -224,7 +224,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 
 アップデートを判断するのは、ユーザーの Mac にすでに入っている**古いバージョン**です。次のどれかを破ると、公開済みのアプリは何も言わずにアップデートできなくなります。
 
-- リポジトリ（`repository`）・タグの形（`tagPrefix`）・アセット名（`assetName`）・Team ID・バンドル ID は変えません。
+- リポジトリ（`repository`）・タグの形（`tagPrefix`）・アセット名（`assetName`）・アプリ名（`appName` — ZIP 内の `.app` フォルダ名）・バージョン規則（`versionScheme`）・Team ID・バンドル ID は変えません。
 - GitHub の最新リリースは、常にこのアプリの正式リリースにします。ドラフトとプレリリースは見ません。別のファイルだけが付いたリリースが最新だと、「インストールファイルはまだ準備できていません」が続きます。
 - 上限（`limits`）は上げるだけにします — 古いバージョンは自分の上限で新しい ZIP を判断します。
 - 最小 macOS を上げたりプロセッサを外したりする前に、OnePercent 0.2.0 以降を使ったバージョンを先に公開しておきます。それより古いバージョンは、開けない新バージョンもそのままインストールします。
@@ -304,7 +304,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 
 更新由用户 Mac 上已经安装的**旧版本**来判断。违反下面任何一条，已经发出去的应用会悄无声息地无法更新。
 
-- 不要更改仓库（`repository`）、标签形式（`tagPrefix`）、资源名称（`assetName`）、Team ID 和 Bundle ID。
+- 不要更改仓库（`repository`）、标签形式（`tagPrefix`）、资源名称（`assetName`）、应用名称（`appName` — ZIP 中的 `.app` 文件夹名）、版本规则（`versionScheme`）、Team ID 和 Bundle ID。
 - GitHub 上的最新发布必须始终是这个应用的正式发布。草稿和预发布不会被看到；如果最新发布只附带其他文件，应用会一直提示安装文件尚未准备好。
 - 上限（`limits`）只能调高 — 旧版本用自己的上限判断新的 ZIP。
 - 在提高最低 macOS 或去掉某个处理器之前，先发布一个使用 OnePercent 0.2.0 或更高版本的版本。更旧的版本会照样安装无法打开的新版本。
@@ -384,7 +384,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 
 更新由使用者 Mac 上已經安裝的**舊版本**來判斷。違反下面任何一條，已經發出去的 App 會悄無聲息地無法更新。
 
-- 不要更改儲存庫（`repository`）、標籤形式（`tagPrefix`）、資源名稱（`assetName`）、Team ID 和 Bundle ID。
+- 不要更改儲存庫（`repository`）、標籤形式（`tagPrefix`）、資源名稱（`assetName`）、App 名稱（`appName` — ZIP 中的 `.app` 資料夾名）、版本規則（`versionScheme`）、Team ID 和 Bundle ID。
 - GitHub 上的最新發佈必須始終是這個 App 的正式發佈。草稿和預發佈不會被看到；如果最新發佈只附帶其他檔案，App 會一直提示安裝檔尚未準備好。
 - 上限（`limits`）只能調高 — 舊版本用自己的上限判斷新的 ZIP。
 - 在提高最低 macOS 或拿掉某個處理器之前，先發佈一個使用 OnePercent 0.2.0 或更新版本的版本。更舊的版本會照樣安裝無法開啟的新版本。

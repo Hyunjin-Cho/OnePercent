@@ -140,6 +140,9 @@ public final class OnePercentUpdater {
     }
 
     /// A version found unable to run on this Mac (#33), while it still applies here.
+    /// Like every stored value it is trusted: same-user code could write one and hide that version on this Mac — but
+    /// same-user code can also replace an app the user can write, so the store is not a security boundary
+    /// (owner decision 2026-11-24, #50).
     private var incompatible: IncompatibleRecord? {
         IncompatibleRecord(stored: store.object(forKey: keys.incompatibleUpdate)).flatMap { $0.applies(to: environment.system) ? $0 : nil }
     }
@@ -365,6 +368,14 @@ public final class OnePercentUpdater {
                     lastError = record.error(on: environment.system)
                 } else {
                     // 더 새 버전이 나왔거나 이 Mac 이 바뀌었다(macOS 업데이트) — 기록은 더 쓸모가 없다.
+                    // 2026-11-24 (#50, 0.2.0 리뷰): 같은 버전이 이제 설치 가능해졌으면 "알림 완료" 기록도 지워 다시 알린다 —
+                    // 처음 알렸을 땐 이 Mac 에서 열 수 없었다.
+                    if let stale = IncompatibleRecord(stored: store.object(forKey: keys.incompatibleUpdate)),
+                       configuration.versionScheme.isSame(stale.version, update.version),
+                       lastNotifiedVersion.map({ configuration.versionScheme.isSame($0, update.version) }) ?? false {
+                        lastNotifiedVersion = nil
+                        store.removeObject(forKey: keys.lastNotifiedVersion)
+                    }
                     store.removeObject(forKey: keys.incompatibleUpdate)
                     phase = .available(update)
                     onePercentLog.notice("update available: \(update.tag, privacy: .public) (installed \(installed, privacy: .public))")

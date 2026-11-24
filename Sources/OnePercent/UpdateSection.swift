@@ -107,10 +107,15 @@ struct UpdateSectionContent: Equatable {
             // A newer version exists that this Mac cannot open (#33): not "up to date" — the error line says why.
             headline = installed
         }
+        let lastChecked = updater.lastCheck.map(OnePercentText.lastChecked) ?? OnePercentText.neverChecked
         if presentation.line == .newVersion, let latest = updater.latestVersion {
             detail = installed + " · " + OnePercentText.latestVersion + " " + latest
+        } else if presentation.text == nil, updater.justUpdatedTo != nil, updater.phase == .upToDate,
+                  !Self.isIncompatibility(updater.lastError) {
+            // 2026-11-24 (#50, 0.2.0 리뷰): 업데이트 직후엔 머리줄이 "…로 업데이트했어요"라, [지금 확인]의 결과가 안 보였다.
+            detail = OnePercentText.upToDate + " · " + lastChecked
         } else {
-            detail = updater.lastCheck.map(OnePercentText.lastChecked) ?? OnePercentText.neverChecked
+            detail = lastChecked
         }
         if case .available(let update) = updater.phase {
             releasePage = update.pageURL
