@@ -74,6 +74,37 @@ import Testing
         }
     }
 
+    // MARK: - Codes shown with errors (#35)
+
+    /// 2026-11-24 (#35): 어느 언어 화면 캡처든 오류를 알아볼 수 있게, 보여 주는 문장 끝에 코드를 붙인다.
+    @Test func shownErrorsCarryTheirCode() {
+        let ko = L10n.table("ko")
+        #expect(OnePercentText.error(.rateLimited, table: ko).hasSuffix(" (rateLimited)"))
+        let failed = OnePercentError.verificationFailed([.notSignedByTeam, .notarizationRejected])
+        #expect(failed.diagnosticCode == "verificationFailed: notSignedByTeam, notarizationRejected")
+        #expect(OnePercentText.error(failed, table: L10n.table("th")).hasSuffix("(verificationFailed: notSignedByTeam, notarizationRejected)"))
+        #expect(OnePercentError.archiveRejected(.outsideApp(appFolder: "A.app")).diagnosticCode == "archiveRejected: outsideApp")
+        #expect(OnePercentError.httpStatus(503).diagnosticCode == "httpStatus: 503")
+        #expect(OnePercentError.busy.diagnosticCode == "busy")
+        #expect(OnePercentText.error(.blocked("A timer is running."), table: L10n.table("en")) == "Update error: A timer is running.",
+                "the app's own reason carries no code")
+        #expect(OnePercentText.error(.cancelled, table: ko) == ko.text("status.error", OnePercentError.cancelled.message(ko)))
+        #expect(OnePercentError.rateLimited.message(ko) == ko.text("error.rateLimited"), "the message itself stays plain")
+    }
+
+    @Test func detailCodesAreDistinct() {
+        let failures: [VerificationFailure] = [.bundleIdentifierMismatch, .notSignedByTeam, .codeSignatureInvalid, .notarizationRejected,
+                                               .versionNotHigher, .buildNotHigher, .buildUnreadable,
+                                               .releaseMismatch(bundleVersion: nil, releaseVersion: "1"), .versionUnreadable,
+                                               .notARealFolder, .copyChanged]
+        let problems: [ArchiveProblem] = [.unreadableListing, .empty, .tooManyEntries(count: 1, max: 1), .tooLarge(maxMB: 1),
+                                          .outsideApp(appFolder: "A"), .linkedEntry(appFolder: "A"), .unexpectedTopLevel(appFolder: "A", count: 1),
+                                          .extractedTooLarge(maxMB: 1), .extractedTooManyItems(max: 1), .extractionTimedOut(seconds: 1),
+                                          .escapingLink(appFolder: "A"), .missingApp(appFolder: "A")]
+        #expect(Set(failures.map(\.code)).count == failures.count)
+        #expect(Set(problems.map(\.code)).count == problems.count)
+    }
+
     // MARK: - Resource bundle (#34)
 
     /// 2026-11-24 (#34): `Bundle.module` 의 접근자는 묶음을 못 찾으면 앱을 끈다(native 빌드: `.app` 바로 옆과 개발 Mac 빌드 경로만 봄).

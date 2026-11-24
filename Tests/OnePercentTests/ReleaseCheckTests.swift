@@ -34,6 +34,7 @@ import Testing
         let sameBuild = OnePercentReleaseCheck.check(zip: zip, tag: "1.1", configuration: config, checkSignature: false,
                                                      previousVersion: "1.0", previousBuild: "2")
         #expect(sameBuild.problems.count == 1 && sameBuild.problems[0].contains("CFBundleVersion"), "forgot to raise the build: \(sameBuild.problems)")
+        #expect(sameBuild.problems.first?.hasSuffix("(verificationFailed: buildNotHigher)") == true, "the same code apps show (#35)")
         let older = OnePercentReleaseCheck.check(zip: zip, tag: "1.1", configuration: config, checkSignature: false,
                                                  previousVersion: "1.2", previousBuild: "1")
         #expect(older.problems.count == 1, "\(older.problems)")
