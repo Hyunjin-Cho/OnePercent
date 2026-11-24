@@ -299,6 +299,39 @@ import Testing
         #expect(!UpdateReplacement.isIntactCopy(at: copy, identity: identity, requirement: requirement), "real codesign refuses an unsigned copy")
     }
 
+    /// 2026-11-24 (#51, 0.2.0 리뷰 P2): 진짜 `codesign` 재검사가 `<App>.app.incoming` 이름의 사본에서도 통과하고 교체가 끝나는지.
+    /// 예전 시험은 재검사를 가짜 클로저로 바꿔 끼웠고, 진짜 `isIntactCopy` 는 거부 쪽만 봤다. 서명은 ad-hoc(진짜 Mach-O 에 실제 서명).
+    @Test func theRealRecheckPassesOnTheRenamedCopy() throws {
+        let root = try Fixture.temporaryRoot("real-recheck")
+        defer { try? FileManager.default.removeItem(at: root) }
+        func signedApp(_ url: URL, version: String, build: String) throws -> URL {
+            let app = try Fixture.makeApp(url, version: version, build: build, extraInfo: ["CFBundleExecutable": Fixture.appName])
+            let executable = app.appendingPathComponent("Contents/MacOS/\(Fixture.appName)")
+            try FileManager.default.removeItem(at: executable)
+            try FileManager.default.copyItem(at: URL(fileURLWithPath: "/usr/bin/true"), to: executable)
+            #expect(Fixture.tool("/usr/bin/codesign", ["--force", "--sign", "-", app.path]) == 0, "ad-hoc signing")
+            return app
+        }
+        let installed = try signedApp(root.appendingPathComponent("Applications/TestApp.app"), version: "1.0", build: "1")
+        let incoming = try signedApp(root.appendingPathComponent("extract/TestApp.app"), version: "1.1", build: "2")
+        let identity = VerifiedIdentity(bundleID: Fixture.bundleID, version: "1.1", build: "2")
+        let requirement = "identifier \"\(Fixture.bundleID)\""
+
+        let renamed = root.appendingPathComponent("staging/TestApp.app.incoming")
+        try FileManager.default.createDirectory(at: renamed.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: incoming, to: renamed)
+        #expect(UpdateReplacement.isIntactCopy(at: renamed, identity: identity, requirement: requirement), "codesign passes on .app.incoming")
+        #expect(!UpdateReplacement.isIntactCopy(at: renamed, identity: identity, requirement: "identifier \"com.example.other\""))
+        try Data("x".utf8).write(to: renamed.appendingPathComponent("Contents/Resources-added"))
+        #expect(!UpdateReplacement.isIntactCopy(at: renamed, identity: identity, requirement: requirement), "a changed copy is refused")
+
+        try UpdateReplacement.replaceAtomically(destination: installed, with: VerifiedUpdate(app: incoming, identity: identity),
+                                                requirement: requirement)   // verifyCopy nil → the real re-check
+        let info = NSDictionary(contentsOf: installed.appendingPathComponent("Contents/Info.plist")) as? [String: Any]
+        #expect(info?["CFBundleShortVersionString"] as? String == "1.1", "the new app is in place under the installed name")
+        #expect(try FileManager.default.contentsOfDirectory(atPath: installed.deletingLastPathComponent().path) == ["TestApp.app"])
+    }
+
     /// 2026-11-22 (#19): 한 시간 전에 빌드된 앱을 교체하는 도중 같은 앱이 또 실행돼 시작 정리(10분 기준)가 돌아도
     /// 진행 중인 staging 은 남고 교체는 끝난다. 예전엔 사본이 원본의 옛 시각을 물려받아 지워졌고 교체가 실패했다.
     @Test func aSwapInProgressSurvivesALaunchCleanup() throws {
