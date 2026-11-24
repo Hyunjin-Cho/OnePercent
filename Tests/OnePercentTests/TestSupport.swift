@@ -67,9 +67,9 @@ enum Fixture {
         return task.terminationStatus
     }
 
-    /// The same command a release script uses: `ditto -c -k --keepParent`.
+    /// The same command a release script uses: `ditto -c -k --norsrc --keepParent` (2026-11-24 #39: `--norsrc` added).
     static func zip(_ app: URL, to zip: URL) -> Bool {
-        tool("/usr/bin/ditto", ["-c", "-k", "--keepParent", app.path, zip.path]) == 0
+        tool("/usr/bin/ditto", ["-c", "-k", "--norsrc", "--keepParent", app.path, zip.path]) == 0
     }
 
     /// A fake central directory and end record (no file data) — for listing decisions only.

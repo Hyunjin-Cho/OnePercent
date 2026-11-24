@@ -19,7 +19,7 @@ Automated tests cover everything except what needs a real signature, a real pass
 2. The **old** build stays local (for example 1.0, build 1). Each **new** build is the latest release of a **public test repository** — tag = version, the ZIP attached.
 3. Drive it with the buttons, or with launch arguments: `open -n TestApp/dist/1.0/OnePercentTestApp.app --args --auto-install` (also `--check-only`, `--cancel-at 0.3`, `--allow-admin`; `-AppleLanguages "(ja)"` for case 13). Every step goes to `~/Library/Logs/OnePercentTestApp.log`.
 4. Reset the app's stored values between runs: `defaults delete com.example.OnePercentTestApp`.
-5. With your own app instead: Developer ID builds, the new one notarized, zipped with `ditto -c -k --keepParent` and checked with `onepercent-check` (README → Making a release). In a Debug build of the old app, point OnePercent at the test repository in code:
+5. With your own app instead: Developer ID builds, the new one notarized, zipped with `ditto -c -k --norsrc --keepParent` and checked with `onepercent-check` (README → Making a release). In a Debug build of the old app, point OnePercent at the test repository in code:
    `#if DEBUG` · `configuration.testRepository = "owner/test-repo"` · `#endif` (Release builds of the package ignore it).
 
 Two things GitHub does (measured 2026-11-22):

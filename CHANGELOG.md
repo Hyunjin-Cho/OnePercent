@@ -1,6 +1,29 @@
 # Changelog
 
-> **기준일:** 2026-11-22 · Versions are Git tags (SwiftPM reads them directly). Newest first.
+> **기준일:** 2026-11-24 · Versions are Git tags (SwiftPM reads them directly). Newest first.
+
+## 0.2.0 — 2026-11-24
+
+### What apps must change
+- `OnePercentError` has two new cases, `requiresNewerSystem(version:minimum:running:)` and `unsupportedProcessor(version:)` — an exhaustive `switch` over it needs them.
+- `OnePercentText.error(_:)` and `UpdateStatusPresentation.errorText` now end with a code in brackets, for example `… (rateLimited)`. `errorDescription` is unchanged.
+- `allowedHosts` entries are validated: a custom entry that is not a lowercase host name (or `*.` and a name with at least two labels) is reported in `problems`, and the updater refuses to run until it is fixed.
+- The README pin is `.upToNextMinor(from: "0.2.0")`.
+
+### Added
+- An update this Mac cannot open is refused before anything is replaced: the new version's `LSMinimumSystemVersion` against this Mac's macOS, and its processors against what can run here (an Intel app under Rosetta keeps working as now). The version is remembered (new stored key `incompatibleUpdate`), so the install button goes away — also after a relaunch — until macOS is new enough or a newer version comes out. This protects users only from versions *after* one that has it: ship 0.2.0 before raising the minimum macOS or dropping a processor. ([#33](https://github.com/Hyunjin-Cho/OnePercent/issues/33))
+- `OnePercentUpdateSection(updater:showsAutomaticChecksSwitch:)` — a ready-made SwiftUI update section in the system's own look. ([#37](https://github.com/Hyunjin-Cho/OnePercent/issues/37))
+- `OnePercentError.diagnosticCode`, `VerificationFailure.code`, `ArchiveProblem.code`; shown errors carry the code, so a screenshot in any language can be read. ([#35](https://github.com/Hyunjin-Cho/OnePercent/issues/35))
+
+### Fixed
+- An app whose resource bundle is not where SwiftPM's native build system looks (an `.app` put together by hand with the bundle in `Contents/Resources`, as the README said) no longer crashes on users' Macs the first time it shows text. OnePercent finds its bundle itself (`Contents/Resources`, next to the app, next to the executable, in a framework) and falls back to English built into the code. ([#34](https://github.com/Hyunjin-Cho/OnePercent/issues/34))
+- Redirects may reach any host below `githubusercontent.com` (`*.` entries in `allowedHosts`), so a new GitHub asset host does not cut off apps already shipped. The asset address itself must still be `github.com/<repository>/releases/download/…`. ([#36](https://github.com/Hyunjin-Cho/OnePercent/issues/36))
+
+### Tools
+- `onepercent-check --published` fetches the latest release exactly the way apps do and checks what they will get; the two GitHub requests are shared with the updater (`GitHubReleases`). It also warns about AppleDouble (`._`) entries — measured: without `ditto --norsrc` a test-app ZIP had 70, and `unzip` then broke the app's signature — and prints the app's minimum macOS and processors. ([#38](https://github.com/Hyunjin-Cho/OnePercent/issues/38))
+
+### Documentation
+- README: ZIPs are made with `ditto -c -k --norsrc --keepParent`; a new section on what must never change once a version is out; the resource bundle note is corrected; `--published`. `TestApp/make-app.sh` and `docs/MANUAL-TEST.md` use `--norsrc` too. ([#39](https://github.com/Hyunjin-Cho/OnePercent/issues/39))
 
 ## 0.1.2 — 2026-11-22
 

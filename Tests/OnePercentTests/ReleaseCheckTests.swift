@@ -90,8 +90,8 @@ import Testing
         let plain = root.appendingPathComponent("plain/TestApp_1.1.zip")
         let clean = root.appendingPathComponent("clean/TestApp_1.1.zip")
         for folder in [plain, clean] { try FileManager.default.createDirectory(at: folder.deletingLastPathComponent(), withIntermediateDirectories: true) }
-        #expect(Fixture.zip(app, to: plain))
-        #expect(Fixture.tool("/usr/bin/ditto", ["-c", "-k", "--norsrc", "--keepParent", app.path, clean.path]) == 0)
+        #expect(Fixture.tool("/usr/bin/ditto", ["-c", "-k", "--keepParent", app.path, plain.path]) == 0)
+        #expect(Fixture.zip(app, to: clean))
         let warned = OnePercentReleaseCheck.check(zip: plain, tag: "1.1", configuration: Fixture.configuration(), checkSignature: false)
         #expect(warned.problems.isEmpty, "\(warned.problems)")
         #expect(warned.warnings.count == 1 && warned.warnings[0].contains("--norsrc"), "\(warned.warnings)")
