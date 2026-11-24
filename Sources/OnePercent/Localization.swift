@@ -128,10 +128,15 @@ public enum OnePercentText {
     static func updated(to version: String, table: L10n.Table) -> String {
         table.text("status.updated", version, table.language == "ko" ? L10n.koreanDirectionalParticle(after: version) : "")
     }
-    /// "Update error: <reason>".
-    public static func error(_ error: OnePercentError) -> String {
-        let table = L10n.current
-        return table.text("status.error", error.message(table))
+    /// "Update error: <reason> (<code>)" — the code is ``OnePercentError/diagnosticCode``, so a screenshot in any language
+    /// can be read. Your app's own refusal (``OnePercentError/blocked(_:)``) and a cancel carry no code.
+    public static func error(_ error: OnePercentError) -> String { self.error(error, table: L10n.current) }
+    static func error(_ error: OnePercentError, table: L10n.Table) -> String {
+        let text = table.text("status.error", error.message(table))
+        switch error {
+        case .blocked, .cancelled: return text
+        default: return "\(text) (\(error.diagnosticCode))"
+        }
     }
     /// The heading of a "new version" notice, with your app's name.
     public static func noticeTitle(appName: String) -> String { L10n.current.text("notice.title", appName) }

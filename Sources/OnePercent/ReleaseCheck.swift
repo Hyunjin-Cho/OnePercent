@@ -51,7 +51,8 @@ public enum OnePercentReleaseCheck {
             let verified = try UpdateVerifier.extractAndVerify(input, checks: checks)
             return Report(problems: problems, bundleVersion: verified.identity.version, build: verified.identity.build)
         } catch let error as OnePercentError {
-            return Report(problems: problems + [error.message(table)], bundleVersion: nil, build: nil)
+            // 2026-11-24 (#35): 앱 화면과 같은 코드를 붙인다 — 개발자가 사용자 캡처의 코드와 바로 맞춰 볼 수 있게.
+            return Report(problems: problems + ["\(error.message(table)) (\(error.diagnosticCode))"], bundleVersion: nil, build: nil)
         } catch {
             return Report(problems: problems + [error.localizedDescription], bundleVersion: nil, build: nil)
         }

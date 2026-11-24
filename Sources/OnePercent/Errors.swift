@@ -79,7 +79,23 @@ public enum OnePercentError: Error, Equatable, Sendable {
     }
 }
 
+extension OnePercentError {
+    /// ``code`` plus what failed inside it — `verificationFailed: notSignedByTeam, notarizationRejected`,
+    /// `archiveRejected: outsideApp`, `httpStatus: 503`. ``OnePercentText/error(_:)`` shows it after the message, so a
+    /// screenshot in any language tells you what happened.
+    /// 2026-11-24 (#35): `code` 는 로그에만 남았다 — 태국어·핀란드어 화면 캡처로는 무슨 오류인지 개발자가 읽을 수 없었다.
+    public var diagnosticCode: String {
+        switch self {
+        case .verificationFailed(let failures) where !failures.isEmpty: "\(code): \(failures.map(\.code).joined(separator: ", "))"
+        case .archiveRejected(let problem): "\(code): \(problem.code)"
+        case .httpStatus(let status): "\(code): \(status)"
+        default: code
+        }
+    }
+}
+
 extension OnePercentError: LocalizedError {
+    /// The message alone, in your app's language (no code — ``OnePercentText/error(_:)`` adds it).
     public var errorDescription: String? { message(L10n.current) }
 
     func message(_ t: L10n.Table) -> String {
@@ -136,6 +152,23 @@ public enum VerificationFailure: Equatable, Sendable {
     case notARealFolder
     case copyChanged
 
+    /// A stable identifier — the case name.
+    public var code: String {
+        switch self {
+        case .bundleIdentifierMismatch: "bundleIdentifierMismatch"
+        case .notSignedByTeam: "notSignedByTeam"
+        case .codeSignatureInvalid: "codeSignatureInvalid"
+        case .notarizationRejected: "notarizationRejected"
+        case .versionNotHigher: "versionNotHigher"
+        case .buildNotHigher: "buildNotHigher"
+        case .buildUnreadable: "buildUnreadable"
+        case .releaseMismatch: "releaseMismatch"
+        case .versionUnreadable: "versionUnreadable"
+        case .notARealFolder: "notARealFolder"
+        case .copyChanged: "copyChanged"
+        }
+    }
+
     func message(_ t: L10n.Table) -> String {
         switch self {
         case .bundleIdentifierMismatch: t.text("verify.bundleIdentifier")
@@ -154,6 +187,24 @@ public enum VerificationFailure: Equatable, Sendable {
 }
 
 extension ArchiveProblem {
+    /// A stable identifier — the case name.
+    public var code: String {
+        switch self {
+        case .unreadableListing: "unreadableListing"
+        case .empty: "empty"
+        case .tooManyEntries: "tooManyEntries"
+        case .tooLarge: "tooLarge"
+        case .outsideApp: "outsideApp"
+        case .linkedEntry: "linkedEntry"
+        case .unexpectedTopLevel: "unexpectedTopLevel"
+        case .extractedTooLarge: "extractedTooLarge"
+        case .extractedTooManyItems: "extractedTooManyItems"
+        case .extractionTimedOut: "extractionTimedOut"
+        case .escapingLink: "escapingLink"
+        case .missingApp: "missingApp"
+        }
+    }
+
     func message(_ t: L10n.Table) -> String {
         switch self {
         case .unreadableListing: t.text("archive.unreadable")

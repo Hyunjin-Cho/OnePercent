@@ -70,7 +70,8 @@ public struct UpdateStatusPresentation: Equatable, Sendable {
         }
     }
 
-    /// The error as localized text ("Update error: …"), or `nil`. A user's own cancel is shown without the "error" prefix.
+    /// The error as localized text ("Update error: … (code)", see ``OnePercentText/error(_:)``), or `nil`.
+    /// A user's own cancel is shown without the "error" prefix and without a code.
     public var errorText: String? {
         guard let error else { return nil }
         return error == .cancelled ? error.localizedDescription : OnePercentText.error(error)
