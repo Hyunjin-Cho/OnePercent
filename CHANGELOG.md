@@ -2,6 +2,13 @@
 
 > **기준일:** 2026-11-24 · Versions are Git tags (SwiftPM reads them directly). Newest first.
 
+## 0.2.1 — 2026-11-24
+
+Fixes from the code review of 0.2.0 (Fable 5.2).
+
+### Fixed
+- 0.2.0 also looked for its resource bundle in the folder **holding** the app (for example `/Applications`, which admin-group programs can write to without a password) — outside the signed app. An app without its own bundle then showed text from a bundle planted next to it, and a planted format with extra `%@` crashed it. OnePercent now looks inside the app only (`Contents/Resources`, the app's top folder, the executable's folder; a separate test bundle or framework adds its own folder), and never uses a format whose placeholders do not fit the values passed — English instead. The README said "next to the app"; it is the app's top folder. ([#49](https://github.com/Hyunjin-Cho/OnePercent/issues/49))
+
 ## 0.2.0 — 2026-11-24
 
 ### What apps must change

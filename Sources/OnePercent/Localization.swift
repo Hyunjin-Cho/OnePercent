@@ -13,11 +13,15 @@ enum L10n {
         /// The format for `key` with `arguments` filled in (`%@` and positional `%1$@`). Missing keys fall back to English —
         /// the bundle's, or the copy built into the code when there is no bundle (#34).
         func text(_ key: String, _ arguments: String...) -> String {
-            var format = bundle?.localizedString(forKey: key, value: nil, table: nil) ?? key
-            if format == key, language != "en" || bundle == nil {
-                format = L10n.english.bundle?.localizedString(forKey: key, value: nil, table: nil) ?? key
+            // 2026-11-24 (#49): 자리표시가 넘기는 값보다 많거나 `%@` 가 아닌 문장은 쓰지 않는다 — `String(format:)` 이 없는 값을 읽어 앱이 꺼진다.
+            func usable(_ format: String?) -> String? {
+                guard let format, format != key, L10n.fits(format, arguments: arguments.count) else { return nil }
+                return format
             }
-            if format == key { format = EmbeddedEnglish.strings[key] ?? key }
+            let format = usable(bundle?.localizedString(forKey: key, value: nil, table: nil))
+                ?? usable(L10n.english.bundle?.localizedString(forKey: key, value: nil, table: nil))
+                ?? usable(EmbeddedEnglish.strings[key])
+                ?? key
             guard !arguments.isEmpty else { return format }
             return String(format: format, locale: Locale(identifier: language), arguments: arguments.map { $0 as NSString })
         }
@@ -69,7 +73,7 @@ enum L10n {
 
     /// OnePercent's resource bundle, or `nil` when it is nowhere to be found (then the text is the built-in English).
     ///
-    /// 2026-11-24 (#34): `Bundle.module` 을 쓰지 않는다. SwiftPM 의 예전 빌드 시스템(native)이 만드는 접근자는 `.app` 바로 옆과
+    /// 2026-11-24 (#34): `Bundle.module` 을 쓰지 않는다. SwiftPM 의 예전 빌드 시스템(native)이 만드는 접근자는 `.app` 안 맨 위와
     /// 개발자 Mac 의 빌드 경로만 보고 없으면 `fatalError` 다 — README 대로 `Contents/Resources` 에 넣어 손으로 조립한 앱이
     /// 개발자 Mac 에선 돌고(빌드 경로) 사용자 Mac 에선 문구를 처음 쓰는 순간 꺼졌다. Swift Build 의 접근자도 못 찾으면 `fatalError`.
     /// 두 접근자가 보는 자리를 모두 직접 보고, 없으면 끄는 대신 영어로 간다.
@@ -77,6 +81,31 @@ enum L10n {
 
     /// The table matching the app's own language (fixed for the life of the process, like the app's own language).
     static let current: Table = table(Bundle.main.preferredLocalizations.first ?? Locale.preferredLanguages.first ?? "en")
+
+    /// `format` uses only `%@` (plain or positional `%2$@`) and `%%`, and no position beyond `count` arguments.
+    static func fits(_ format: String, arguments count: Int) -> Bool {
+        let characters = Array(format)
+        var index = 0, next = 1
+        while index < characters.count {
+            guard characters[index] == "%" else { index += 1; continue }
+            index += 1
+            guard index < characters.count else { return false }
+            if characters[index] == "%" { index += 1; continue }
+            var digits = ""
+            while index < characters.count, characters[index].isASCII, characters[index].isNumber { digits.append(characters[index]); index += 1 }
+            var position = next
+            if !digits.isEmpty {
+                guard index < characters.count, characters[index] == "$", let number = Int(digits), number > 0 else { return false }
+                position = number
+                index += 1
+            } else {
+                next += 1
+            }
+            guard index < characters.count, characters[index] == "@", position <= count else { return false }
+            index += 1
+        }
+        return true
+    }
 
     /// Korean picks 로/으로 by the sound of the last character: a final consonant other than ㄹ takes 으로.
     /// Digits are read as Sino-Korean numbers — 0(영)·3(삼)·6(육) end in a consonant; 1(일)·7(칠)·8(팔) end in ㄹ and take 로.
@@ -152,25 +181,33 @@ enum ResourceBundle {
 
     private final class Finder {}
 
-    /// Folders that may hold the bundle, in order: an app's `Contents/Resources` (Xcode, Swift Build, a hand-assembled app),
-    /// next to the app or the tool (SwiftPM's native build system), inside a framework, and next to a test bundle or tool.
+    /// Folders that may hold the bundle, in order: the app's `Contents/Resources` (Xcode, Swift Build, a hand-assembled app),
+    /// the app's top folder `<App>.app/` or a tool's folder (SwiftPM's native build system), the executable's folder — all
+    /// inside the app — and, only when OnePercent is not the main bundle (a framework, a test bundle), that bundle's resources
+    /// and the folder it sits in.
+    /// 2026-11-24 (#49, 0.2.0 리뷰 P2): 0.2.0 은 OnePercent 가 앱에 함께 빌드됐을 때도 "자기 번들의 부모 폴더"를 봤다 — 그건 `.app` 이
+    /// 들어 있는 `/Applications` 같은 **앱 바깥**이다. 관리자 그룹 프로그램이 거기 둔 묶음의 문구가 화면에 나왔고, 자리표시를 더 넣은
+    /// 문구는 앱을 끄게 했다(리뷰어 재현). 앱 바깥은 테스트 묶음·프레임워크일 때만 본다.
     static func candidates() -> [URL] {
+        candidates(main: Bundle.main, own: Bundle(for: Finder.self), environment: ProcessInfo.processInfo.environment)
+    }
+
+    static func candidates(main: Bundle, own: Bundle, environment: [String: String]) -> [URL] {
         var folders: [URL?] = []
         #if DEBUG
         // Swift Build's own accessor honours these while testing (`swift test`).
-        let environment = ProcessInfo.processInfo.environment
         if let override = environment["PACKAGE_RESOURCE_BUNDLE_PATH"] ?? environment["PACKAGE_RESOURCE_BUNDLE_URL"] {
             folders.append(URL(fileURLWithPath: override))
         }
         #endif
-        let own = Bundle(for: Finder.self)
         folders += [
-            Bundle.main.resourceURL,
-            Bundle.main.bundleURL,
-            own.resourceURL,
-            own.bundleURL.deletingLastPathComponent(),
-            Bundle.main.executableURL?.resolvingSymlinksInPath().deletingLastPathComponent(),
+            main.resourceURL,
+            main.bundleURL,
+            main.executableURL?.resolvingSymlinksInPath().deletingLastPathComponent(),
         ]
+        if own.bundleURL.standardizedFileURL != main.bundleURL.standardizedFileURL {
+            folders += [own.resourceURL, own.bundleURL.deletingLastPathComponent()]
+        }
         var seen: Set<String> = []
         return folders.compactMap { $0?.standardizedFileURL }.filter { seen.insert($0.path).inserted }
     }

@@ -162,6 +162,50 @@ import Testing
         #expect(ResourceBundle.locate(in: [hollow]) == nil, "a folder with that name but no English strings is not it")
     }
 
+    /// 2026-11-24 (#49): with OnePercent built into the app, every place looked at is inside the app — never the folder the
+    /// app sits in. Only a separate bundle (test bundle, framework) adds its own folder.
+    @Test func neverLooksOutsideTheApp() throws {
+        let root = try Fixture.temporaryRoot("candidates")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let app = try Fixture.makeApp(root.appendingPathComponent("Applications/Hand.app"), version: "1.0", build: "1",
+                                      extraInfo: ["CFBundleExecutable": Fixture.appName])
+        try FileManager.default.createDirectory(at: app.appendingPathComponent("Contents/Resources"), withIntermediateDirectories: true)
+        let outside = app.deletingLastPathComponent().standardizedFileURL.path
+        let main = try #require(Bundle(url: app))
+        let inApp = ResourceBundle.candidates(main: main, own: main, environment: [:]).map(\.path)
+        #expect(!inApp.isEmpty && inApp.allSatisfy { $0.hasPrefix(app.standardizedFileURL.path) }, "\(inApp)")
+        #expect(!inApp.contains(outside))
+        #expect(inApp.contains(app.appendingPathComponent("Contents/Resources").standardizedFileURL.path), "Contents/Resources")
+        #expect(inApp.contains(app.standardizedFileURL.path), "the app's top folder (SwiftPM native)")
+
+        let tests = root.appendingPathComponent("build/Tests.xctest")
+        try FileManager.default.createDirectory(at: tests.appendingPathComponent("Contents"), withIntermediateDirectories: true)
+        let own = try #require(Bundle(url: tests))
+        let separate = ResourceBundle.candidates(main: main, own: own, environment: [:]).map(\.path)
+        #expect(separate.contains(root.appendingPathComponent("build").standardizedFileURL.path), "next to a test bundle: \(separate)")
+        #expect(!separate.contains(outside))
+    }
+
+    /// A format that asks for more values than are passed, or for anything but `%@`, is never used — English instead.
+    @Test func unsafeFormatsAreNotUsed() throws {
+        #expect(L10n.fits("Server error (HTTP %@).", arguments: 1))
+        #expect(L10n.fits("%1$@ needs %2$@ (%3$@) 100%%", arguments: 3))
+        #expect(L10n.fits("%2$@ %1$@", arguments: 2))
+        for bad in ["%@ %@", "%2$@", "%d", "%s", "%n", "%", "%0$@", "%1$d", "100%"] {
+            #expect(!L10n.fits(bad, arguments: 1), "\(bad)")
+        }
+        let root = try Fixture.temporaryRoot("planted")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let lproj = root.appendingPathComponent("xx.lproj")
+        try FileManager.default.createDirectory(at: lproj, withIntermediateDirectories: true)
+        try Data("\"error.httpStatus\" = \"%@ %@ %@ %@ %@ %@\";\n\"ui.checkNow\" = \"%d\";\n\"ui.cancel\" = \"Annuler\";".utf8)
+            .write(to: lproj.appendingPathComponent("Localizable.strings"))
+        let planted = L10n.Table(language: "xx", bundle: Bundle(url: lproj))
+        #expect(planted.text("error.httpStatus", "500") == "Server error (HTTP 500).", "no crash, English")
+        #expect(planted.text("ui.checkNow") == "Check Now")
+        #expect(planted.text("ui.cancel") == "Annuler", "a harmless string is still used")
+    }
+
     /// Without a bundle the text is English from the code — never the key, never a crash.
     @Test func withoutABundleTheTextIsEnglish() {
         let table = L10n.Table(language: "en", bundle: nil)

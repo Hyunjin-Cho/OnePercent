@@ -72,7 +72,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 - 사용자가 쓸 수 없는 위치의 앱은 기본으로 앱 안에서 설치하지 않고 릴리스 페이지로 안내합니다(`allowsAdministratorInstall`, 실제 Mac 확인 전 — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)).
 - GitHub로 HTTPS `GET`만 보냅니다. 헤더는 `Accept`·`User-Agent`·고정 `Accept-Language: en`이고, 쿠키·디스크 캐시는 쓰지 않습니다. 리디렉션은 `github.com`·`api.github.com`·`*.githubusercontent.com`(`allowedHosts`)으로만 따라갑니다.
 - 화면에 나오는 오류 문장 끝 괄호 안의 코드(예: `(rateLimited)`, `(verificationFailed: notarizationRejected)`)는 모든 언어에서 같습니다 — 사용자의 화면 캡처로 원인을 찾을 때 씁니다.
-- 문구 묶음 `OnePercent_OnePercent.bundle`은 `Contents/Resources`, 앱 바로 옆, 실행 파일 옆에서 찾습니다. Xcode 앱 타깃은 알아서 넣고, `.app`을 직접 묶을 때는 `Contents/Resources`에 넣으면 됩니다. 어디에도 없으면 영어로 보여 줍니다(0.1.x는 이때 앱이 꺼졌습니다).
+- 문구 묶음 `OnePercent_OnePercent.bundle`은 앱 안에서만 — `Contents/Resources`, 앱 맨 위 폴더(`<앱>.app/`), 실행 파일 옆 — 찾습니다. Xcode 앱 타깃은 알아서 넣고, `.app`을 직접 묶을 때는 `Contents/Resources`에 넣으면 됩니다. 어디에도 없으면 영어로 보여 줍니다(0.1.x는 이때 앱이 꺼졌습니다).
 
 MIT — [LICENSE](LICENSE)
 
@@ -154,7 +154,7 @@ Updates are judged by the **old version** already on users' Macs. Break one of t
 - An app in a place the user cannot write is not installed in-app by default; the user is pointed to the release page (`allowsAdministratorInstall`, untested on a real Mac — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)).
 - Only HTTPS `GET` requests to GitHub. Headers: `Accept`, `User-Agent`, fixed `Accept-Language: en`. No cookies, no disk cache. Redirects are followed only to `github.com`, `api.github.com` and `*.githubusercontent.com` (`allowedHosts`).
 - The code in brackets at the end of a shown error (for example `(rateLimited)`, `(verificationFailed: notarizationRejected)`) is the same in every language — read it off a user's screenshot.
-- The text bundle `OnePercent_OnePercent.bundle` is looked for in `Contents/Resources`, next to the app and next to the executable. Xcode app targets put it there for you; if you put the `.app` together yourself, copy it into `Contents/Resources`. If it is nowhere, the text is English (0.1.x crashed instead).
+- The text bundle `OnePercent_OnePercent.bundle` is looked for inside the app only — `Contents/Resources`, the app's top folder (`<YourApp>.app/`), next to the executable. Xcode app targets put it there for you; if you put the `.app` together yourself, copy it into `Contents/Resources`. If it is nowhere, the text is English (0.1.x crashed instead).
 
 MIT — [LICENSE](LICENSE)
 
@@ -234,7 +234,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 - ユーザーが書き込めない場所のアプリは、既定ではアプリ内でインストールせず、リリースページへ案内します（`allowsAdministratorInstall`、実機での確認前 — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)）。
 - GitHub への HTTPS `GET` のみ送ります。ヘッダーは `Accept`・`User-Agent`・固定の `Accept-Language: en` で、Cookie・ディスクキャッシュは使いません。リダイレクトは `github.com`・`api.github.com`・`*.githubusercontent.com`（`allowedHosts`）にだけ従います。
 - 表示されるエラー文の末尾の括弧内のコード（例：`(rateLimited)`、`(verificationFailed: notarizationRejected)`）は、すべての言語で同じです — ユーザーのスクリーンショットから原因を探すときに使います。
-- 文言バンドル `OnePercent_OnePercent.bundle` は `Contents/Resources`、アプリのすぐ隣、実行ファイルの隣で探します。Xcode のアプリターゲットは自動で入れます。`.app` を自分で組み立てる場合は `Contents/Resources` に入れてください。どこにもなければ英語で表示します（0.1.x ではアプリが終了していました）。
+- 文言バンドル `OnePercent_OnePercent.bundle` はアプリの中だけで探します — `Contents/Resources`、アプリの最上位フォルダ（`<アプリ>.app/`）、実行ファイルの隣。Xcode のアプリターゲットは自動で入れます。`.app` を自分で組み立てる場合は `Contents/Resources` に入れてください。どこにもなければ英語で表示します（0.1.x ではアプリが終了していました）。
 
 MIT — [LICENSE](LICENSE)
 
@@ -314,7 +314,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 - 用户无法写入位置的应用，默认不在应用内安装，而是引导用户到发布页面（`allowsAdministratorInstall`，尚未在真机验证 — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)）。
 - 只向 GitHub 发送 HTTPS `GET` 请求。请求头为 `Accept`、`User-Agent` 和固定的 `Accept-Language: en`，不使用 Cookie 和磁盘缓存。重定向只跟随到 `github.com`、`api.github.com` 和 `*.githubusercontent.com`（`allowedHosts`）。
 - 显示的错误句末尾括号里的代码（例如 `(rateLimited)`、`(verificationFailed: notarizationRejected)`）在所有语言中都相同 — 可以从用户的截图中查找原因。
-- 文字资源包 `OnePercent_OnePercent.bundle` 会在 `Contents/Resources`、应用旁边和可执行文件旁边查找。Xcode 应用目标会自动放入；自己组装 `.app` 时，请放进 `Contents/Resources`。哪里都找不到时显示英文（0.1.x 在这时会崩溃）。
+- 文字资源包 `OnePercent_OnePercent.bundle` 只在应用内部查找 — `Contents/Resources`、应用的顶层文件夹（`<应用>.app/`）、可执行文件旁边。Xcode 应用目标会自动放入；自己组装 `.app` 时，请放进 `Contents/Resources`。哪里都找不到时显示英文（0.1.x 在这时会崩溃）。
 
 MIT — [LICENSE](LICENSE)
 
@@ -394,7 +394,7 @@ swift run --package-path /path/to/OnePercent onepercent-check \
 - 使用者無法寫入位置的 App，預設不在 App 內安裝，而是引導使用者到發佈頁面（`allowsAdministratorInstall`，尚未在實機驗證 — [docs/MANUAL-TEST.md](docs/MANUAL-TEST.md)）。
 - 只向 GitHub 傳送 HTTPS `GET` 請求。標頭為 `Accept`、`User-Agent` 和固定的 `Accept-Language: en`，不使用 Cookie 與磁碟快取。重新導向只會跟隨到 `github.com`、`api.github.com` 和 `*.githubusercontent.com`（`allowedHosts`）。
 - 顯示的錯誤句末尾括號裡的代碼（例如 `(rateLimited)`、`(verificationFailed: notarizationRejected)`）在所有語言中都相同 — 可以從使用者的截圖中找出原因。
-- 文字資源包 `OnePercent_OnePercent.bundle` 會在 `Contents/Resources`、App 旁邊和執行檔旁邊尋找。Xcode App 目標會自動放入；自己組裝 `.app` 時，請放進 `Contents/Resources`。哪裡都找不到時顯示英文（0.1.x 在這時會當掉）。
+- 文字資源包 `OnePercent_OnePercent.bundle` 只在 App 內部尋找 — `Contents/Resources`、App 的最上層資料夾（`<App>.app/`）、執行檔旁邊。Xcode App 目標會自動放入；自己組裝 `.app` 時，請放進 `Contents/Resources`。哪裡都找不到時顯示英文（0.1.x 在這時會當掉）。
 
 MIT — [LICENSE](LICENSE)
 
