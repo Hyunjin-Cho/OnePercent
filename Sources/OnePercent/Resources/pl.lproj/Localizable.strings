@@ -54,6 +54,8 @@
 "error.quitCancelled" = "Nowa wersja została otwarta, ale poprzednia kopia aplikacji się nie zamknęła. Zakończ ją samodzielnie.";
 "error.fileSystem" = "Operacja na pliku nie powiodła się — %@";
 "error.administratorInstallDisabled" = "Tę kopię aplikacji można zastąpić tylko hasłem administratora, więc nie została zainstalowana z poziomu aplikacji. Pobierz nową wersję ze strony wydania i zastąp aplikację samodzielnie.";
+"error.requiresNewerSystem" = "Wersja %1$@ wymaga systemu macOS %2$@ lub nowszego, więc nie została zainstalowana (ten Mac: macOS %3$@).";
+"error.unsupportedProcessor" = "Wersja %@ nie działa na procesorze tego Maca, więc nie została zainstalowana.";
 "archive.unreadable" = "nie można odczytać listy ZIP";
 "archive.empty" = "archiwum jest puste";
 "archive.tooManyEntries" = "za dużo elementów (%1$@, maks. %2$@)";

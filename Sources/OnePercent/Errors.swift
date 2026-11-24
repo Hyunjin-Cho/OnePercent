@@ -41,6 +41,11 @@ public enum OnePercentError: Error, Equatable, Sendable {
     case fileSystem(String)
     /// Replacing this copy needs an administrator password, and ``OnePercentConfiguration/allowsAdministratorInstall`` is off.
     case administratorInstallDisabled
+    /// The new version's `LSMinimumSystemVersion` is above this Mac's macOS. Nothing was installed, and checks do not offer
+    /// this version again on this Mac until macOS is new enough.
+    case requiresNewerSystem(version: String, minimum: String, running: String)
+    /// The new version has no code for this Mac's processor. Nothing was installed, and checks do not offer it again here.
+    case unsupportedProcessor(version: String)
 
     /// A stable identifier, for logs and tests.
     public var code: String {
@@ -75,6 +80,8 @@ public enum OnePercentError: Error, Equatable, Sendable {
         case .quitCancelled: "quitCancelled"
         case .fileSystem: "fileSystem"
         case .administratorInstallDisabled: "administratorInstallDisabled"
+        case .requiresNewerSystem: "requiresNewerSystem"
+        case .unsupportedProcessor: "unsupportedProcessor"
         }
     }
 }
@@ -132,6 +139,8 @@ extension OnePercentError: LocalizedError {
         case .quitCancelled: t.text("error.quitCancelled")
         case .fileSystem(let reason): t.text("error.fileSystem", reason)
         case .administratorInstallDisabled: t.text("error.administratorInstallDisabled")
+        case .requiresNewerSystem(let version, let minimum, let running): t.text("error.requiresNewerSystem", version, minimum, running)
+        case .unsupportedProcessor(let version): t.text("error.unsupportedProcessor", version)
         }
     }
 }

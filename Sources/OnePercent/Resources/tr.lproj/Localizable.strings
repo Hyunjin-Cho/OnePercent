@@ -54,6 +54,8 @@
 "error.quitCancelled" = "Yeni sürüm açıldı ama uygulamanın önceki kopyası kapanmadı. Lütfen onu kendiniz kapatın.";
 "error.fileSystem" = "Bir dosya işlemi başarısız oldu — %@";
 "error.administratorInstallDisabled" = "Uygulamanın bu kopyası yalnızca yönetici parolasıyla değiştirilebildiği için uygulama içinden yüklenmedi. Yeni sürümü yayın sayfasından indirip uygulamayı kendiniz değiştirin.";
+"error.requiresNewerSystem" = "%1$@ sürümü macOS %2$@ veya sonrasını gerektirdiği için yüklenmedi (bu Mac: macOS %3$@).";
+"error.unsupportedProcessor" = "%@ sürümü bu Mac’in işlemcisinde çalışmadığı için yüklenmedi.";
 "archive.unreadable" = "ZIP listesi okunamadı";
 "archive.empty" = "arşiv boş";
 "archive.tooManyEntries" = "çok fazla öğe (%1$@, en fazla %2$@)";

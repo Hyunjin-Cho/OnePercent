@@ -54,6 +54,8 @@
 "error.quitCancelled" = "Uusi versio avautui, mutta apin aiempi kopio ei sulkeutunut. Lopeta se itse.";
 "error.fileSystem" = "Tiedostotoiminto epäonnistui – %@";
 "error.administratorInstallDisabled" = "Tämän apin kopion voi korvata vain ylläpitäjän salasanalla, joten sitä ei asennettu apin sisältä. Lataa uusi versio julkaisusivulta ja korvaa appi itse.";
+"error.requiresNewerSystem" = "Versio %1$@ vaatii vähintään macOS-version %2$@, joten sitä ei asennettu (tämä Mac: macOS %3$@).";
+"error.unsupportedProcessor" = "Versio %@ ei toimi tämän Macin suorittimella, joten sitä ei asennettu.";
 "archive.unreadable" = "ZIP-luetteloa ei voitu lukea";
 "archive.empty" = "arkisto on tyhjä";
 "archive.tooManyEntries" = "liian monta kohdetta (%1$@, enintään %2$@)";

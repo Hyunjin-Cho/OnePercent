@@ -54,6 +54,8 @@
 "error.quitCancelled" = "The new version opened, but the previous copy of the app didn’t quit. Please quit it yourself.";
 "error.fileSystem" = "A file operation failed — %@";
 "error.administratorInstallDisabled" = "This copy of the app can only be replaced with an administrator password, so it wasn’t installed in-app. Download the new version from the release page and replace the app yourself.";
+"error.requiresNewerSystem" = "Version %1$@ needs macOS %2$@ or later, so it wasn’t installed (this Mac: macOS %3$@).";
+"error.unsupportedProcessor" = "Version %@ doesn’t run on this Mac’s processor, so it wasn’t installed.";
 "archive.unreadable" = "the ZIP listing couldn’t be read";
 "archive.empty" = "the archive is empty";
 "archive.tooManyEntries" = "too many entries (%1$@, max %2$@)";

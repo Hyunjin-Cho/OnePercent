@@ -54,6 +54,8 @@
 "error.quitCancelled" = "Az új verzió megnyílt, de az app korábbi példánya nem lépett ki. Léptesse ki kézzel.";
 "error.fileSystem" = "Egy fájlművelet sikertelen – %@";
 "error.administratorInstallDisabled" = "Az app ezen példánya csak rendszergazdai jelszóval cserélhető, ezért nem lett az appból telepítve. Töltse le az új verziót a kiadás oldaláról, és cserélje le az appot kézzel.";
+"error.requiresNewerSystem" = "A(z) %1$@ verzióhoz macOS %2$@ vagy újabb szükséges, ezért nem lett telepítve (ez a Mac: macOS %3$@).";
+"error.unsupportedProcessor" = "A(z) %@ verzió nem fut ennek a Macnek a processzorán, ezért nem lett telepítve.";
 "archive.unreadable" = "a ZIP-lista nem olvasható";
 "archive.empty" = "az archívum üres";
 "archive.tooManyEntries" = "túl sok elem (%1$@, max. %2$@)";

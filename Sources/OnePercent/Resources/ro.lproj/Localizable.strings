@@ -54,6 +54,8 @@
 "error.quitCancelled" = "Versiunea nouă s-a deschis, dar copia anterioară a aplicației nu s-a închis. Închide-o tu.";
 "error.fileSystem" = "O operațiune cu fișiere a eșuat — %@";
 "error.administratorInstallDisabled" = "Această copie a aplicației poate fi înlocuită doar cu o parolă de administrator, așa că nu a fost instalată din aplicație. Descarcă versiunea nouă de pe pagina lansării și înlocuiește aplicația tu.";
+"error.requiresNewerSystem" = "Versiunea %1$@ necesită macOS %2$@ sau o versiune mai nouă, așa că nu a fost instalată (acest Mac: macOS %3$@).";
+"error.unsupportedProcessor" = "Versiunea %@ nu rulează pe procesorul acestui Mac, așa că nu a fost instalată.";
 "archive.unreadable" = "lista ZIP nu a putut fi citită";
 "archive.empty" = "arhiva este goală";
 "archive.tooManyEntries" = "prea multe elemente (%1$@, max. %2$@)";

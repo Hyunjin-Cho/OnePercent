@@ -54,6 +54,8 @@
 "error.quitCancelled" = "Nová verze se otevřela, ale předchozí kopie aplikace se neukončila. Ukončete ji prosím sami.";
 "error.fileSystem" = "Operace se souborem selhala – %@";
 "error.administratorInstallDisabled" = "Tuto kopii aplikace lze nahradit jen s heslem správce, a proto nebyla nainstalována přímo z aplikace. Stáhněte novou verzi ze stránky vydání a aplikaci nahraďte sami.";
+"error.requiresNewerSystem" = "Verze %1$@ vyžaduje macOS %2$@ nebo novější, a proto nebyla nainstalována (tento Mac: macOS %3$@).";
+"error.unsupportedProcessor" = "Verze %@ na procesoru tohoto Macu nefunguje, a proto nebyla nainstalována.";
 "archive.unreadable" = "seznam ZIP nelze přečíst";
 "archive.empty" = "archiv je prázdný";
 "archive.tooManyEntries" = "příliš mnoho položek (%1$@, max. %2$@)";

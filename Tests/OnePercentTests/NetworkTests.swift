@@ -27,6 +27,8 @@ import Testing
         var adminScripts: [AdminReplacementScript] = []
         var adminError: Error?
         var notices: [String] = []
+        // 2026-11-24 (#33): a fixed Mac — fixture apps are not Mach-O, so their architectures read as unknown.
+        var system = SystemProfile(version: [27, 2, 1], runnableArchitectures: [NSBundleExecutableArchitectureARM64], architectures: { _ in nil })
 
         func make(_ configuration: OnePercentConfiguration = Fixture.configuration()) -> OnePercentUpdater {
             let environment = OnePercentUpdater.Environment(
@@ -47,7 +49,8 @@ import Testing
                     if let relaunchError { throw relaunchError }
                     relaunched.append(url)
                 },
-                firstCheckDelay: firstCheckDelay)
+                firstCheckDelay: firstCheckDelay,
+                system: system)
             let updater = OnePercentUpdater(configuration: configuration, store: store, session: session,
                                             now: { [unowned self] in now }, gate: gate, environment: environment)
             updater.onUpdateAvailable = { [unowned self] in notices.append($0.tag) }
@@ -445,10 +448,11 @@ import Testing
     }
 
     /// Installed TestApp 1.0 (build 1, marker "old") and a real ditto ZIP of TestApp 1.1 (build 2, marker "new").
-    func makeRelease(_ name: String, version: String = "1.1", build: String = "2") throws -> Release {
+    func makeRelease(_ name: String, version: String = "1.1", build: String = "2", info: [String: Any] = [:]) throws -> Release {
         let root = try Fixture.temporaryRoot(name)
         let installed = try Fixture.makeApp(root.appendingPathComponent("Applications/TestApp.app"), version: "1.0", build: "1", marker: "old")
-        let source = try Fixture.makeApp(root.appendingPathComponent("src/TestApp.app"), version: version, build: build, marker: "new")
+        let source = try Fixture.makeApp(root.appendingPathComponent("src/TestApp.app"), version: version, build: build, marker: "new",
+                                         extraInfo: info)
         let zipURL = root.appendingPathComponent("TestApp_\(version).zip")
         guard Fixture.zip(source, to: zipURL) else { throw CocoaError(.fileWriteUnknown) }
         try FileManager.default.createDirectory(at: root.appendingPathComponent("tmp"), withIntermediateDirectories: true)
@@ -625,6 +629,67 @@ import Testing
         #expect(second.lastError == .relaunchFailed("test"))
         #expect(Fixture.marker(release.installed) == "new" && second.phase == .idle, "installed; no second install offered")
         #expect(!second.presentation.showsInstallButton, "2026-11-20 리뷰 P2-5a: the button does not come back either")
+    }
+
+    // MARK: - A version this Mac cannot open (#33)
+
+    /// 2026-11-24 (#33): refused before replacing; the install button goes away and stays away (also after a relaunch) until
+    /// macOS is new enough or a newer version comes out.
+    @Test func aVersionThisMacCannotOpen() async throws {
+        NetworkStub.reset()
+        let release = try makeRelease("too-new", info: ["LSMinimumSystemVersion": "28.0"])
+        defer { try? FileManager.default.removeItem(at: release.root) }
+        serve(release)
+        let h = harness(release)
+        let updater = h.make()
+        await updater.checkNow(userInitiated: false)
+        #expect(h.notices == ["1.1"], "nobody can know before downloading")
+        await updater.installAvailableUpdate()
+        let refusal = OnePercentError.requiresNewerSystem(version: "1.1", minimum: "28.0", running: "27.2.1")
+        #expect(updater.lastError == refusal, "\(String(describing: updater.lastError))")
+        #expect(updater.phase == .upToDate && !updater.presentation.showsInstallButton && !updater.presentation.showsMenuNotice)
+        #expect(Fixture.marker(release.installed) == "old" && h.relaunched.isEmpty && leftovers(release).isEmpty)
+        #expect(IncompatibleRecord(stored: h.store.object(forKey: keys.incompatibleUpdate))?.version == "1.1")
+
+        h.nextMonth()
+        await updater.checkNow(userInitiated: false)
+        #expect(updater.phase == .upToDate && updater.lastError == refusal && h.notices == ["1.1"], "not offered or announced again")
+        let relaunched = h.make()
+        #expect(!relaunched.presentation.showsInstallButton, "no button after a relaunch either")
+        await relaunched.installAvailableUpdate()
+        #expect(NetworkStub.count(ReleaseJSON.assetPath("1.1")) == 1, "downloaded once only")
+
+        h.system.version = [28, 0, 0]                           // macOS was updated
+        let updated = h.make()
+        #expect(updated.presentation.showsInstallButton, "offered again")
+        await updated.checkNow()
+        if case .available = updated.phase {} else { Issue.record("offered again after the macOS update: \(updated.phase)") }
+        #expect(h.store.object(forKey: keys.incompatibleUpdate) == nil, "the record is gone")
+        await updated.installAvailableUpdate()
+        #expect(updated.lastError == nil && Fixture.marker(release.installed) == "new")
+    }
+
+    @Test func aNewerVersionClearsTheRecord() async throws {
+        NetworkStub.reset()
+        let release = try makeRelease("too-new-2", info: ["LSMinimumSystemVersion": "28.0"])
+        defer { try? FileManager.default.removeItem(at: release.root) }
+        serve(release)
+        let h = harness(release)
+        h.system = SystemProfile(version: [27, 2, 1], runnableArchitectures: [NSBundleExecutableArchitectureARM64],
+                                 architectures: { _ in [NSBundleExecutableArchitectureX86_64] })
+        let updater = h.make()
+        await updater.checkNow()
+        await updater.installAvailableUpdate()
+        #expect(updater.lastError == .requiresNewerSystem(version: "1.1", minimum: "28.0", running: "27.2.1"), "macOS named first")
+        let fixed = try makeRelease("fixed", version: "1.2", build: "3")
+        defer { try? FileManager.default.removeItem(at: fixed.root) }
+        serve(fixed, tag: "1.2")
+        await updater.checkNow()
+        if case .available(let update) = updater.phase { #expect(update.version == "1.2") } else { Issue.record("1.2 offered: \(updater.phase)") }
+        #expect(h.store.object(forKey: keys.incompatibleUpdate) == nil)
+        await updater.installAvailableUpdate()
+        #expect(updater.lastError == .unsupportedProcessor(version: "1.2"), "an Intel-only build on an Apple silicon Mac")
+        #expect(updater.phase == .upToDate && Fixture.marker(release.installed) == "old")
     }
 
     // MARK: - PR #1 code review follow-ups (2026-11-20)
