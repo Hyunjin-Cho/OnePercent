@@ -15,6 +15,10 @@ Fixes from the code review of 0.2.0 (Fable 5.2).
 ### Tools
 - `onepercent-check` warns when the app has no readable `LSMinimumSystemVersion` — then no Mac is ever refused. ([#50](https://github.com/Hyunjin-Cho/OnePercent/issues/50))
 
+### Tests
+- The real `codesign` re-check is now tested passing on the renamed staging copy (`<App>.app.incoming`), not only refusing. On a real Mac (macOS 27.2.1) cases 7 and 1 pass with the new name, and a staging copy left by a force quit no longer gets a Launch Services registration. ([#51](https://github.com/Hyunjin-Cho/OnePercent/issues/51))
+- The README pin is `.upToNextMinor(from: "0.2.1")`.
+
 ### Documentation
 - 0.2.0's "What apps must change" missed three items, now listed there. README "Once a version is out" adds `appName` and `versionScheme`. Values OnePercent stores are trusted: same-user code could write an `incompatibleUpdate` record and hide a version on this Mac — but such code can also replace an app the user can write, so the store is not a security boundary (owner decision 2026-11-24). ([#50](https://github.com/Hyunjin-Cho/OnePercent/issues/50))
 
