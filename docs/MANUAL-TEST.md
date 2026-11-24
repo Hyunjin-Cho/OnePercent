@@ -15,7 +15,7 @@ Automated tests cover everything except what needs a real signature, a real pass
 
 2026-11-22: `TestApp/` builds a ready-made test app, **OnePercentTestApp** (owner decision: a dedicated test app, so most cases run without anyone at the keyboard). Your own app works too (step 5).
 
-1. Build: `TestApp/make-app.sh VERSION BUILD owner/test-repo [--adhoc] [--notarize PROFILE] [--padding MB]`
+1. Build: `TestApp/make-app.sh VERSION BUILD owner/test-repo [--adhoc] [--notarize PROFILE] [--padding MB] [--min-macos VERSION]`
    → `TestApp/dist/VERSION/OnePercentTestApp.app` and `OnePercentTestApp_VERSION.zip`. Developer ID signed with the hardened runtime and a secure timestamp (the Team ID is read from the keychain's "Developer ID Application" identity). `--adhoc` signs ad-hoc (case 10), `--notarize` submits to Apple and staples, `--padding` adds random bytes so a download takes a while (cases 5, 6), `--min-macos` sets `LSMinimumSystemVersion` (case 14).
 2. The **old** build stays local (for example 1.0, build 1). Each **new** build is the latest release of a **public test repository** — tag = version, the ZIP attached.
 3. Drive it with the buttons, or with launch arguments: `open -n TestApp/dist/1.0/OnePercentTestApp.app --args --auto-install` (also `--check-only`, `--cancel-at 0.3`, `--allow-admin`; `-AppleLanguages "(ja)"` for case 13). Every step goes to `~/Library/Logs/OnePercentTestApp.log`.

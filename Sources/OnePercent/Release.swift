@@ -75,6 +75,9 @@ enum ReleaseDecision {
     /// 2026-11-24 (#36): GitHub 가 자산 CDN 호스트 이름을 바꾸면 이미 나간 앱 전부가 내려받지 못한다 — 하위 호스트 전체를 허용할 수 있게 했다.
     static func isAllowedURL(_ url: URL, hosts: Set<String>) -> Bool {
         guard url.scheme?.lowercased() == "https", let host = url.host?.lowercased(), !host.isEmpty else { return false }
+        // 2026-11-24 (#50, 0.2.0 리뷰): `URL.host` 는 퍼센트 인코딩을 풀어 준다 — `evil.example%2F.githubusercontent.com` 이
+        // "…/.githubusercontent.com" 으로 끝나 와일드카드를 통과했다(실제 연결은 실패했지만). 호스트 이름 글자만 받는다.
+        guard host.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == ".") }) else { return false }
         if hosts.contains(host) { return true }
         return hosts.contains { entry in
             guard let suffix = OnePercentConfiguration.wildcardSuffix(entry) else { return false }

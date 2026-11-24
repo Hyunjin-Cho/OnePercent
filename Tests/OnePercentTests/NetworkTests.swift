@@ -671,6 +671,31 @@ import Testing
         #expect(updated.lastError == nil && Fixture.marker(release.installed) == "new")
     }
 
+    /// 2026-11-24 (#50): once macOS is new enough, the version is announced again by a background check — the first
+    /// announcement came when this Mac could not open it.
+    @Test func aVersionThatBecomesInstallableIsAnnouncedAgain() async throws {
+        NetworkStub.reset()
+        let release = try makeRelease("announce-again", info: ["LSMinimumSystemVersion": "28.0"])
+        defer { try? FileManager.default.removeItem(at: release.root) }
+        serve(release)
+        let h = harness(release)
+        let updater = h.make()
+        await updater.checkNow(userInitiated: false)
+        await updater.installAvailableUpdate()
+        #expect(h.notices == ["1.1"] && updater.phase == .upToDate)
+        h.nextMonth()
+        await updater.checkNow(userInitiated: false)
+        #expect(h.notices == ["1.1"], "still not announced while it cannot open here")
+        h.system.version = [28, 1, 0]
+        let updated = h.make()
+        h.nextMonth()
+        await updated.checkNow(userInitiated: false)
+        #expect(h.notices == ["1.1", "1.1"], "announced again: \(h.notices)")
+        h.nextMonth()
+        await updated.checkNow(userInitiated: false)
+        #expect(h.notices.count == 2, "and only once")
+    }
+
     @Test func aNewerVersionClearsTheRecord() async throws {
         NetworkStub.reset()
         let release = try makeRelease("too-new-2", info: ["LSMinimumSystemVersion": "28.0"])
@@ -722,6 +747,11 @@ import Testing
         content = UpdateSectionContent(updater: reopened)
         #expect(content.headline == OnePercentText.updated(to: "1.0"))
         #expect(content.releasePage == reopened.releasePageURL(forVersion: "1.0") && content.releasePage != nil)
+        // 2026-11-24 (#50): Check Now right after an update shows its result under the "Updated to" headline.
+        await reopened.checkNow()
+        content = UpdateSectionContent(updater: reopened)
+        #expect(content.headline == OnePercentText.updated(to: "1.0"))
+        #expect(content.detail == OnePercentText.upToDate + " · " + OnePercentText.lastChecked(h.now), "\(content.detail)")
     }
 
     @Test func sectionRenders() {

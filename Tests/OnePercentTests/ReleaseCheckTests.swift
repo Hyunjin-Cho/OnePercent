@@ -94,9 +94,10 @@ import Testing
         #expect(Fixture.zip(app, to: clean))
         let warned = OnePercentReleaseCheck.check(zip: plain, tag: "1.1", configuration: Fixture.configuration(), checkSignature: false)
         #expect(warned.problems.isEmpty, "\(warned.problems)")
-        #expect(warned.warnings.count == 1 && warned.warnings[0].contains("--norsrc"), "\(warned.warnings)")
+        #expect(warned.warnings.filter { $0.contains("--norsrc") }.count == 1, "\(warned.warnings)")
         let quiet = OnePercentReleaseCheck.check(zip: clean, tag: "1.1", configuration: Fixture.configuration(), checkSignature: false)
-        #expect(quiet.problems.isEmpty && quiet.warnings.isEmpty, "\(quiet.warnings)")
+        #expect(quiet.problems.isEmpty && !quiet.warnings.contains { $0.contains("--norsrc") }, "\(quiet.warnings)")
+        #expect(quiet.warnings.contains { $0.contains("no readable LSMinimumSystemVersion") }, "the fixture has none (#50)")
     }
 
     /// The minimum macOS and processors of the app in the ZIP are reported — raising them is never a surprise.
@@ -113,6 +114,7 @@ import Testing
         let report = OnePercentReleaseCheck.check(zip: zip, tag: "1.1", configuration: Fixture.configuration(), checkSignature: false)
         #expect(report.problems.isEmpty, "\(report.problems)")
         #expect(report.minimumSystemVersion == "15.0" && report.tag == "1.1")
+        #expect(report.warnings.isEmpty, "\(report.warnings)")
         #expect(!report.architectures.isEmpty && report.architectures.allSatisfy { $0 == "arm64" || $0 == "x86_64" }, "\(report.architectures)")
         #expect(OnePercentReleaseCheck.architectureName(0x12) == "cpu type 0x00000012")
     }

@@ -47,7 +47,7 @@ public enum OnePercentReleaseCheck {
                              previousVersion: String? = nil, previousBuild: String? = nil) -> Report {
         let table = L10n.current
         var problems = configuration.problems
-        let warnings = appleDoubleWarning(zip: zip, configuration: configuration).map { [$0] } ?? []
+        var warnings = appleDoubleWarning(zip: zip, configuration: configuration).map { [$0] } ?? []
         if zip.lastPathComponent != configuration.assetFileName(forTag: tag) {
             problems.append("asset name must be \(configuration.assetFileName(forTag: tag)), not \(zip.lastPathComponent)")
         }
@@ -75,8 +75,14 @@ public enum OnePercentReleaseCheck {
             // 2026-11-24 (#38): 최소 macOS·프로세서를 알려 준다 — 올린 줄 모르고 올리면, 그보다 낮은 Mac 은 이 버전을 받지 못한다.
             let info = NSDictionary(contentsOf: verified.app.appendingPathComponent("Contents/Info.plist")) as? [String: Any]
             let architectures = (SystemProfile.current.architectures(verified.app) ?? []).map(architectureName)
+            let minimum = (info?["LSMinimumSystemVersion"] as? String)?.trimmingCharacters(in: .whitespaces)
+            // 2026-11-24 (#50, 0.2.0 리뷰): 없으면 어떤 Mac 도 이 버전을 거부하지 않는다 — 손으로 조립한 앱이 빠뜨리기 쉽다.
+            if minimum.flatMap(Compatibility.parseVersion) == nil {
+                warnings.append("the app has no readable LSMinimumSystemVersion, so apps never refuse this version on an older macOS — "
+                                + "if it needs a newer macOS than the release before it, those Macs install an app that does not open")
+            }
             return Report(problems: problems, warnings: warnings, bundleVersion: verified.identity.version, build: verified.identity.build,
-                          minimumSystemVersion: (info?["LSMinimumSystemVersion"] as? String)?.trimmingCharacters(in: .whitespaces),
+                          minimumSystemVersion: minimum,
                           architectures: architectures, tag: tag)
         } catch let error as OnePercentError {
             // 2026-11-24 (#35): 앱 화면과 같은 코드를 붙인다 — 개발자가 사용자 캡처의 코드와 바로 맞춰 볼 수 있게.

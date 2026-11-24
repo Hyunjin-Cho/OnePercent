@@ -111,6 +111,10 @@ import Testing
                         "https://gist.github.com/a", "https://evil.example/a.githubusercontent.com"] {
             #expect(!ReleaseDecision.isAllowedURL(URL(string: refused)!, hosts: hosts), "\(refused)")
         }
+        // 2026-11-24 (#50): `URL.host` decodes percent escapes — only host-name characters count.
+        for encoded in ["https://evil.example%2F.githubusercontent.com/a", "https://evil%20x.githubusercontent.com/a"] {
+            if let url = URL(string: encoded) { #expect(!ReleaseDecision.isAllowedURL(url, hosts: hosts), "\(encoded) → \(url.host ?? "nil")") }
+        }
         #expect(!ReleaseDecision.isAllowedURL(URL(string: "https://objects.githubusercontent.com/a")!,
                                               hosts: ["github.com", "api.github.com", "release-assets.githubusercontent.com"]),
                 "a list without the wildcard still matches exactly")

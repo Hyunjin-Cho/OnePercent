@@ -8,6 +8,15 @@ Fixes from the code review of 0.2.0 (Fable 5.2).
 
 ### Fixed
 - 0.2.0 also looked for its resource bundle in the folder **holding** the app (for example `/Applications`, which admin-group programs can write to without a password) — outside the signed app. An app without its own bundle then showed text from a bundle planted next to it, and a planted format with extra `%@` crashed it. OnePercent now looks inside the app only (`Contents/Resources`, the app's top folder, the executable's folder; a separate test bundle or framework adds its own folder), and never uses a format whose placeholders do not fit the values passed — English instead. The README said "next to the app"; it is the app's top folder. ([#49](https://github.com/Hyunjin-Cho/OnePercent/issues/49))
+- A version refused on this Mac is announced again (`onUpdateAvailable`) once macOS is new enough — the first announcement came when it could not open here. ([#50](https://github.com/Hyunjin-Cho/OnePercent/issues/50))
+- `*.` entries in `allowedHosts` match only host-name characters: `URL.host` decodes percent escapes, so `evil.example%2F.githubusercontent.com` used to pass (the connection itself failed). ([#50](https://github.com/Hyunjin-Cho/OnePercent/issues/50))
+- `OnePercentUpdateSection`: Check Now right after an update now shows its result ("You're up to date." under "Updated to …"). ([#50](https://github.com/Hyunjin-Cho/OnePercent/issues/50))
+
+### Tools
+- `onepercent-check` warns when the app has no readable `LSMinimumSystemVersion` — then no Mac is ever refused. ([#50](https://github.com/Hyunjin-Cho/OnePercent/issues/50))
+
+### Documentation
+- 0.2.0's "What apps must change" missed three items, now listed there. README "Once a version is out" adds `appName` and `versionScheme`. Values OnePercent stores are trusted: same-user code could write an `incompatibleUpdate` record and hide a version on this Mac — but such code can also replace an app the user can write, so the store is not a security boundary (owner decision 2026-11-24). ([#50](https://github.com/Hyunjin-Cho/OnePercent/issues/50))
 
 ## 0.2.0 — 2026-11-24
 
@@ -16,6 +25,7 @@ Fixes from the code review of 0.2.0 (Fable 5.2).
 - `OnePercentText.error(_:)` and `UpdateStatusPresentation.errorText` now end with a code in brackets, for example `… (rateLimited)`. `errorDescription` is unchanged.
 - `allowedHosts` entries are validated: a custom entry that is not a lowercase host name (or `*.` and a name with at least two labels) is reported in `problems`, and the updater refuses to run until it is fixed.
 - The README pin is `.upToNextMinor(from: "0.2.0")`.
+- Listed after the 0.2.0 review ([#50](https://github.com/Hyunjin-Cho/OnePercent/issues/50)): a custom `OnePercentStore` must store a dictionary (`incompatibleUpdate`: `[String: Any]` holding `[Int]`), not only Bool, Date and String; `phase` can be `.upToDate` while `lastError` says the newer version cannot run on this Mac — do not show "You're up to date." then; `githubHosts` now holds `*.githubusercontent.com` instead of the two CDN names.
 
 ### Added
 - An update this Mac cannot open is refused before anything is replaced: the new version's `LSMinimumSystemVersion` against this Mac's macOS, and its processors against what can run here (an Intel app under Rosetta keeps working as now). The version is remembered (new stored key `incompatibleUpdate`), so the install button goes away — also after a relaunch — until macOS is new enough or a newer version comes out. This protects users only from versions *after* one that has it: ship 0.2.0 before raising the minimum macOS or dropping a processor. ([#33](https://github.com/Hyunjin-Cho/OnePercent/issues/33))
