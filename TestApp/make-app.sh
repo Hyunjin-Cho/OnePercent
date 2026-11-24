@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Builds OnePercentTestApp.app for docs/MANUAL-TEST.md and zips it the way OnePercent expects.
 #
-#   TestApp/make-app.sh VERSION BUILD OWNER/REPO [--adhoc] [--notarize PROFILE] [--padding MB]
+#   TestApp/make-app.sh VERSION BUILD OWNER/REPO [--adhoc] [--notarize PROFILE] [--padding MB] [--min-macos VERSION]
 #
 #   VERSION BUILD   CFBundleShortVersionString and CFBundleVersion (for example 1.1 2)
 #   OWNER/REPO      the public test repository the app checks
 #   --adhoc         sign ad-hoc instead of with Developer ID (case 10: wrong signer)
 #   --notarize P    submit to Apple's notary service with the notarytool keychain profile P, then staple
 #   --padding MB    add MB of random bytes so the download takes a while (cases 5 and 6)
+#   --min-macos V   LSMinimumSystemVersion (default 14.0) — case 14: a version this Mac cannot open
 #
 # Output: TestApp/dist/VERSION/OnePercentTestApp.app and TestApp/dist/VERSION/OnePercentTestApp_VERSION.zip
 #
@@ -16,14 +17,15 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-[ $# -ge 3 ] || { sed -n '3,12p' "$0"; exit 2; }
+[ $# -ge 3 ] || { sed -n '3,13p' "$0"; exit 2; }
 VERSION="$1"; BUILD="$2"; REPOSITORY="$3"; shift 3
-ADHOC=0; PROFILE=""; PADDING=0
+ADHOC=0; PROFILE=""; PADDING=0; MIN_MACOS=14.0
 while [ $# -gt 0 ]; do
   case "$1" in
     --adhoc) ADHOC=1; shift ;;
     --notarize) PROFILE="${2:?--notarize needs a keychain profile name}"; shift 2 ;;
     --padding) PADDING="${2:?--padding needs a size in MB}"; shift 2 ;;
+    --min-macos) MIN_MACOS="${2:?--min-macos needs a macOS version}"; shift 2 ;;
     *) echo "unknown option $1"; exit 2 ;;
   esac
 done
@@ -35,6 +37,7 @@ number_pattern='^[0-9]+$'
 [[ $VERSION =~ $version_pattern && $VERSION != *..* ]] || { echo "✗ VERSION must look like 1.2 or 2026.11.17 (got: $VERSION)"; exit 2; }
 [[ $BUILD =~ $build_pattern ]] || { echo "✗ BUILD must be a build number such as 2 or 1.10 (got: $BUILD)"; exit 2; }
 [[ $PADDING =~ $number_pattern ]] || { echo "✗ --padding needs a whole number of MB (got: $PADDING)"; exit 2; }
+[[ $MIN_MACOS =~ $build_pattern ]] || { echo "✗ --min-macos must look like 14.0 (got: $MIN_MACOS)"; exit 2; }
 NAME=OnePercentTestApp
 BUNDLE_ID="${BUNDLE_ID:-com.example.OnePercentTestApp}"
 
@@ -66,7 +69,7 @@ PLIST="$APP/Contents/Info.plist"
   -c "Add :CFBundleShortVersionString string $VERSION" \
   -c "Add :CFBundleVersion string $BUILD" \
   -c "Add :CFBundleDevelopmentRegion string en" \
-  -c "Add :LSMinimumSystemVersion string 14.0" \
+  -c "Add :LSMinimumSystemVersion string $MIN_MACOS" \
   -c "Add :NSPrincipalClass string NSApplication" \
   -c "Add :NSHighResolutionCapable bool true" \
   -c "Add :OPRepository string $REPOSITORY" \
