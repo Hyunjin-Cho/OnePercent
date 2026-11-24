@@ -10,12 +10,14 @@ enum L10n {
         let language: String
         let bundle: Bundle?
 
-        /// The format for `key` with `arguments` filled in (`%@` and positional `%1$@`). Missing keys fall back to English.
+        /// The format for `key` with `arguments` filled in (`%@` and positional `%1$@`). Missing keys fall back to English —
+        /// the bundle's, or the copy built into the code when there is no bundle (#34).
         func text(_ key: String, _ arguments: String...) -> String {
             var format = bundle?.localizedString(forKey: key, value: nil, table: nil) ?? key
-            if format == key, language != "en" {
+            if format == key, language != "en" || bundle == nil {
                 format = L10n.english.bundle?.localizedString(forKey: key, value: nil, table: nil) ?? key
             }
+            if format == key { format = EmbeddedEnglish.strings[key] ?? key }
             guard !arguments.isEmpty else { return format }
             return String(format: format, locale: Locale(identifier: language), arguments: arguments.map { $0 as NSString })
         }
@@ -44,26 +46,34 @@ enum L10n {
         }
     }
 
-    /// Languages OnePercent has strings for (the `.lproj` folders in its resource bundle).
-    static var available: [String] { Bundle.module.localizations.filter { $0 != "Base" } }
+    /// Languages OnePercent has strings for (the `.lproj` folders in its resource bundle). Only English without the bundle.
+    static var available: [String] { resources?.localizations.filter { $0 != "Base" } ?? ["en"] }
 
     /// The raw table of one language, for consistency tests.
     static func rawStrings(_ language: String) -> [String: String]? {
-        Bundle.module.path(forResource: "Localizable", ofType: "strings", inDirectory: nil, forLocalization: language)
+        resources?.path(forResource: "Localizable", ofType: "strings", inDirectory: nil, forLocalization: language)
             .flatMap { NSDictionary(contentsOfFile: $0) as? [String: String] }
     }
 
     /// The table for one language code such as `ko` or `pt-BR`. Unknown codes fall back to English.
     static func table(_ language: String) -> Table {
         let matched = Bundle.preferredLocalizations(from: available, forPreferences: [language]).first ?? "en"
-        let path = Bundle.module.path(forResource: matched, ofType: "lproj")
+        let path = resources?.path(forResource: matched, ofType: "lproj")
         return Table(language: matched, bundle: path.flatMap(Bundle.init(path:)))
     }
 
     static let english: Table = {
-        let path = Bundle.module.path(forResource: "en", ofType: "lproj")
+        let path = resources?.path(forResource: "en", ofType: "lproj")
         return Table(language: "en", bundle: path.flatMap(Bundle.init(path:)))
     }()
+
+    /// OnePercent's resource bundle, or `nil` when it is nowhere to be found (then the text is the built-in English).
+    ///
+    /// 2026-11-24 (#34): `Bundle.module` 을 쓰지 않는다. SwiftPM 의 예전 빌드 시스템(native)이 만드는 접근자는 `.app` 바로 옆과
+    /// 개발자 Mac 의 빌드 경로만 보고 없으면 `fatalError` 다 — README 대로 `Contents/Resources` 에 넣어 손으로 조립한 앱이
+    /// 개발자 Mac 에선 돌고(빌드 경로) 사용자 Mac 에선 문구를 처음 쓰는 순간 꺼졌다. Swift Build 의 접근자도 못 찾으면 `fatalError`.
+    /// 두 접근자가 보는 자리를 모두 직접 보고, 없으면 끄는 대신 영어로 간다.
+    static let resources: Bundle? = ResourceBundle.locate(in: ResourceBundle.candidates())
 
     /// The table matching the app's own language (fixed for the life of the process, like the app's own language).
     static let current: Table = table(Bundle.main.preferredLocalizations.first ?? Locale.preferredLanguages.first ?? "en")
@@ -129,4 +139,47 @@ public enum OnePercentText {
     public static var noticeNewVersion: String { L10n.current.text("notice.new") }
     public static var noticeBody: String { L10n.current.text("notice.body") }
     public static var noticeShow: String { L10n.current.text("notice.show") }
+}
+
+/// Where OnePercent's resource bundle (`OnePercent_OnePercent.bundle`) can be.
+enum ResourceBundle {
+    static let name = "OnePercent_OnePercent.bundle"
+
+    private final class Finder {}
+
+    /// Folders that may hold the bundle, in order: an app's `Contents/Resources` (Xcode, Swift Build, a hand-assembled app),
+    /// next to the app or the tool (SwiftPM's native build system), inside a framework, and next to a test bundle or tool.
+    static func candidates() -> [URL] {
+        var folders: [URL?] = []
+        #if DEBUG
+        // Swift Build's own accessor honours these while testing (`swift test`).
+        let environment = ProcessInfo.processInfo.environment
+        if let override = environment["PACKAGE_RESOURCE_BUNDLE_PATH"] ?? environment["PACKAGE_RESOURCE_BUNDLE_URL"] {
+            folders.append(URL(fileURLWithPath: override))
+        }
+        #endif
+        let own = Bundle(for: Finder.self)
+        folders += [
+            Bundle.main.resourceURL,
+            Bundle.main.bundleURL,
+            own.resourceURL,
+            own.bundleURL.deletingLastPathComponent(),
+            Bundle.main.executableURL?.resolvingSymlinksInPath().deletingLastPathComponent(),
+        ]
+        var seen: Set<String> = []
+        return folders.compactMap { $0?.standardizedFileURL }.filter { seen.insert($0.path).inserted }
+    }
+
+    /// The first folder's bundle that really holds OnePercent's English strings. A folder that is the bundle itself
+    /// (the testing override) counts too.
+    static func locate(in folders: [URL]) -> Bundle? {
+        for folder in folders {
+            let url = folder.lastPathComponent == name ? folder : folder.appendingPathComponent(name)
+            if let bundle = Bundle(url: url),
+               bundle.path(forResource: "Localizable", ofType: "strings", inDirectory: nil, forLocalization: "en") != nil {
+                return bundle
+            }
+        }
+        return nil
+    }
 }
