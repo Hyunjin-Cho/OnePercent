@@ -24,6 +24,8 @@ GitHub Releases로 배포하는 macOS 앱의 앱 안 업데이트 부품입니�
 .package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.2.1"))
 ```
 
+0.1.x에서 올린다면 [CHANGELOG](CHANGELOG.md) 0.2.0의 "What apps must change"를 먼저 보세요 — 오류 종류가 두 개(`requiresNewerSystem`·`unsupportedProcessor`) 늘었고, 화면 오류 문장 끝에 코드가 붙습니다.
+
 ## 쓰기
 
 ```swift
@@ -38,7 +40,8 @@ updater.onUpdateAvailable = { update in /* 직접 만든 알림. 여기서 설�
 updater.willRelaunch = { /* 저장할 것은 여기서 — 새 앱이 applicationWillTerminate보다 먼저 뜹니다 */ }
 updater.startAutomaticChecks()
 
-// 설정 화면: await updater.checkNow(showNotice: false) · [설치] 버튼: await updater.installAvailableUpdate()
+// 설정 화면: OnePercentUpdateSection(updater: updater)
+// 직접 만들 때: await updater.checkNow(showNotice: false) · [설치] 버튼: await updater.installAvailableUpdate()
 ```
 
 설정 화면에는 `OnePercentUpdateSection(updater: updater)`를 넣으면 됩니다 — 상태 한 줄, 버전, [지금 확인]·[설치]·[취소] 중 지금 할 일 하나, 진행률, 자동 확인 스위치를 시스템 기본 모양으로 보여 줍니다. 다른 모양은 `updater.presentation`과 `OnePercentText`(29개 언어)로 직접 만듭니다. 다른 설정은 [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift) 문서 주석에 있습니다.
@@ -78,8 +81,6 @@ MIT — [LICENSE](LICENSE)
 
 ---
 
----
-
 <a id="english"></a>
 
 # OnePercent — English
@@ -106,6 +107,8 @@ A small in-app updater for macOS apps that ship through GitHub Releases. It down
 .package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.2.1"))
 ```
 
+Coming from 0.1.x? Read "What apps must change" under 0.2.0 in the [CHANGELOG](CHANGELOG.md) first — there are two new errors (`requiresNewerSystem`, `unsupportedProcessor`), and shown errors end with a code.
+
 ## Use it
 
 ```swift
@@ -120,7 +123,8 @@ updater.onUpdateAvailable = { update in /* show your own notice; do not install 
 updater.willRelaunch = { /* save here — the new copy starts before applicationWillTerminate */ }
 updater.startAutomaticChecks()
 
-// Settings: await updater.checkNow(showNotice: false) · Install button: await updater.installAvailableUpdate()
+// Settings: OnePercentUpdateSection(updater: updater)
+// Your own UI: await updater.checkNow(showNotice: false) · Install button: await updater.installAvailableUpdate()
 ```
 
 For your settings, `OnePercentUpdateSection(updater: updater)` is ready to use: a status line, the versions, the one next step (Check Now, Install or Cancel), progress and the automatic-check switch, in the system's own look. For a different look, build your own from `updater.presentation` and `OnePercentText` (29 languages). Other settings are documented in [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift).
@@ -186,6 +190,8 @@ GitHub Releases で配布する macOS アプリのための、小さなアプリ
 .package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.2.1"))
 ```
 
+0.1.x から上げる場合は、まず [CHANGELOG](CHANGELOG.md) の 0.2.0「What apps must change」を読んでください — エラーの種類が 2 つ（`requiresNewerSystem`・`unsupportedProcessor`）増え、表示されるエラー文の末尾にコードが付きます。
+
 ## 使う
 
 ```swift
@@ -200,7 +206,8 @@ updater.onUpdateAvailable = { update in /* 独自の通知を表示。ここで�
 updater.willRelaunch = { /* 保存はここで — 新しいアプリは applicationWillTerminate より先に起動します */ }
 updater.startAutomaticChecks()
 
-// 設定画面: await updater.checkNow(showNotice: false) · ［インストール］ボタン: await updater.installAvailableUpdate()
+// 設定画面: OnePercentUpdateSection(updater: updater)
+// 自作する場合: await updater.checkNow(showNotice: false) · ［インストール］ボタン: await updater.installAvailableUpdate()
 ```
 
 設定画面には `OnePercentUpdateSection(updater: updater)` を置くだけで使えます — 状態の 1 行、バージョン、［今すぐ確認］・［インストール］・［キャンセル］のうち今できる 1 つ、進行状況、自動確認のスイッチを、システム標準の見た目で表示します。別の見た目にしたい場合は `updater.presentation` と `OnePercentText`（29 言語）で作ります。その他の設定は [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift) のドキュメントコメントにあります。
@@ -266,6 +273,8 @@ MIT — [LICENSE](LICENSE)
 .package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.2.1"))
 ```
 
+从 0.1.x 升级时，请先阅读 [CHANGELOG](CHANGELOG.md) 中 0.2.0 的“What apps must change” — 新增了两种错误（`requiresNewerSystem`、`unsupportedProcessor`），显示的错误句末尾会带上代码。
+
 ## 使用
 
 ```swift
@@ -280,7 +289,8 @@ updater.onUpdateAvailable = { update in /* 显示你自己的通知。不要在�
 updater.willRelaunch = { /* 需要保存的内容在这里保存 — 新应用会先于 applicationWillTerminate 启动 */ }
 updater.startAutomaticChecks()
 
-// 设置界面: await updater.checkNow(showNotice: false) · ［安装］按钮: await updater.installAvailableUpdate()
+// 设置界面: OnePercentUpdateSection(updater: updater)
+// 自己构建时: await updater.checkNow(showNotice: false) · ［安装］按钮: await updater.installAvailableUpdate()
 ```
 
 设置界面里放上 `OnePercentUpdateSection(updater: updater)` 即可 — 以系统默认外观显示状态行、版本、［立即检查］／［安装］／［取消］中当前可做的一项、进度和自动检查开关。需要别的外观时，用 `updater.presentation` 和 `OnePercentText`（29 种语言）自己构建。其他设置见 [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift) 的文档注释。
@@ -346,6 +356,8 @@ MIT — [LICENSE](LICENSE)
 .package(url: "https://github.com/Hyunjin-Cho/OnePercent.git", .upToNextMinor(from: "0.2.1"))
 ```
 
+從 0.1.x 升級時，請先閱讀 [CHANGELOG](CHANGELOG.md) 中 0.2.0 的「What apps must change」 — 新增了兩種錯誤（`requiresNewerSystem`、`unsupportedProcessor`），顯示的錯誤句末尾會帶上代碼。
+
 ## 使用
 
 ```swift
@@ -360,7 +372,8 @@ updater.onUpdateAvailable = { update in /* 顯示你自己的通知。不要在�
 updater.willRelaunch = { /* 需要儲存的內容在這裡儲存 — 新 App 會先於 applicationWillTerminate 啟動 */ }
 updater.startAutomaticChecks()
 
-// 設定畫面: await updater.checkNow(showNotice: false) · ［安裝］按鈕: await updater.installAvailableUpdate()
+// 設定畫面: OnePercentUpdateSection(updater: updater)
+// 自己建構時: await updater.checkNow(showNotice: false) · ［安裝］按鈕: await updater.installAvailableUpdate()
 ```
 
 設定畫面裡放上 `OnePercentUpdateSection(updater: updater)` 即可 — 以系統預設外觀顯示狀態列、版本、［立即檢查］／［安裝］／［取消］中目前可做的一項、進度和自動檢查開關。需要別的外觀時，用 `updater.presentation` 和 `OnePercentText`（29 種語言）自己建構。其他設定見 [`OnePercentConfiguration`](Sources/OnePercent/Configuration.swift) 的文件註解。
