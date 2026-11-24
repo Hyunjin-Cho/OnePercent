@@ -11,7 +11,7 @@ import Foundation
 /// ```
 ///
 /// Only those four are required. The release ZIP must be named `YourApp_<tag>.zip` by default and contain
-/// `YourApp.app` at its top level (`ditto -c -k --keepParent YourApp.app YourApp_<tag>.zip`).
+/// `YourApp.app` at its top level (`ditto -c -k --norsrc --keepParent YourApp.app YourApp_<tag>.zip`).
 public struct OnePercentConfiguration: Sendable {
     /// GitHub `owner/name` whose **latest** release is checked. Drafts and pre-releases are ignored.
     public var repository: String

@@ -86,14 +86,14 @@ codesign --verify --deep --strict "$APP"
 
 if [ -n "$PROFILE" ]; then
   echo "▸ Notarizing with profile $PROFILE (waits for Apple)…"
-  ditto -c -k --keepParent "$APP" "$OUT/notary.zip"
+  ditto -c -k --norsrc --keepParent "$APP" "$OUT/notary.zip"
   xcrun notarytool submit "$OUT/notary.zip" --keychain-profile "$PROFILE" --wait
   rm -f "$OUT/notary.zip"
   xcrun stapler staple "$APP"
   xcrun stapler validate "$APP"
 fi
 
-ditto -c -k --keepParent "$APP" "$OUT/${NAME}_$VERSION.zip"
+ditto -c -k --norsrc --keepParent "$APP" "$OUT/${NAME}_$VERSION.zip"
 echo "✓ $APP"
 echo "✓ $OUT/${NAME}_$VERSION.zip ($(stat -f %z "$OUT/${NAME}_$VERSION.zip") bytes)"
 codesign -dv "$APP" 2>&1 | grep -E "^(Identifier|Authority|TeamIdentifier|Timestamp)=" | head -4 || true

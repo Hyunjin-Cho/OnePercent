@@ -43,7 +43,7 @@ public enum ArchiveProblem: Equatable, Sendable {
 /// enforced on disk while unpacking (``extractionProblem(bytes:items:elapsed:limits:)``).
 /// ⚠️ Names cannot be trusted either — `ditto -x -k` unpacks by each file's local header name, not the central listing.
 /// A ZIP can list a name inside the app and unpack to a different one, so the top level is checked again after unpacking.
-/// Release ZIPs made with `ditto -c -k --keepParent` have no comment, no ZIP64, and every entry under `<appName>.app/`.
+/// Release ZIPs made with `ditto -c -k --norsrc --keepParent` have no comment, no ZIP64, and every entry under `<appName>.app/`.
 /// Anything else is refused (fail-closed).
 enum UpdateArchive {
     /// Bytes read from the end: the end record (22 bytes) and a possible ZIP64 locator in front of it (20 bytes).
