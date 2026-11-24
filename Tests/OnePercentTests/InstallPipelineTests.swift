@@ -277,6 +277,9 @@ import Testing
                     && stagingFolder?.deletingLastPathComponent().path == installed.deletingLastPathComponent().path
                     && stagingFolder?.lastPathComponent.hasPrefix(UpdateReplacement.stagingPrefix(for: installed)) == true,
                     "the copy next to the installed app is re-checked, not the temporary original")
+            // 2026-11-24 (#31): the copy is not named like an app (macOS registered `.app` copies with Launch Services);
+            // the result still has the installed app's name (`names == ["TestApp.app"]` below).
+            #expect(checked.first?.lastPathComponent == "TestApp.app.incoming" && checked.first?.pathExtension != "app")
             #expect(installedDuringCheck == "old", "nothing touched before the check")
             #expect(thrown == !accept)
             #expect(Fixture.marker(installed) == (accept ? "new" : "old"))

@@ -17,6 +17,7 @@
 
 ### Fixed
 - An app whose resource bundle is not where SwiftPM's native build system looks (an `.app` put together by hand with the bundle in `Contents/Resources`, as the README said) no longer crashes on users' Macs the first time it shows text. OnePercent finds its bundle itself (`Contents/Resources`, next to the app, next to the executable, in a framework) and falls back to English built into the code. ([#34](https://github.com/Hyunjin-Cho/OnePercent/issues/34))
+- The staging copy next to the app is named `<App>.app.incoming`, not `<App>.app`. macOS registered the `.app` copy with Launch Services and kept the registration after the folder was gone — measured on macOS 27.2.1: the `/Applications` watcher registers a hidden `.app` within seconds, and `replaceItemAt` registers the copy's path when it replaces a large registered app. Neither happens with the new name; the re-check and the installed app's name are unchanged. No effect on opening the app or its URL schemes was found — the registrations were clutter. ([#31](https://github.com/Hyunjin-Cho/OnePercent/issues/31))
 - Redirects may reach any host below `githubusercontent.com` (`*.` entries in `allowedHosts`), so a new GitHub asset host does not cut off apps already shipped. The asset address itself must still be `github.com/<repository>/releases/download/…`. ([#36](https://github.com/Hyunjin-Cho/OnePercent/issues/36))
 
 ### Tools

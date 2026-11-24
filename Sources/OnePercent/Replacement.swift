@@ -8,6 +8,16 @@ enum UpdateReplacement {
     /// Name prefix of the user-path staging copy next to the installed app.
     static func stagingPrefix(for destination: URL) -> String { ".\(destination.lastPathComponent).onepercent-" }
 
+    /// The copy's name inside the staging folder: not ending in `.app`, so macOS does not take it for an app.
+    /// `replaceItemAt` gives the result the installed app's own name.
+    /// 2026-11-24 (#31) 실측(macOS 27.2.1): `.app` 으로 끝나는 사본은 macOS 가 LaunchServices 에 등록해, 폴더를 지운 뒤에도
+    /// 등록이 남았다(`lsregister -gc` 로도 안 지워짐 — 공개 해제 API 없음). 두 경로 —
+    /// ① /Applications 감시 데몬이 숨은 폴더 안의 `.app` 을 4초 안에 등록(케이스 7처럼 사본이 오래 남으면 그대로 남음),
+    /// ② 등록된 큰 옛 앱을 `replaceItemAt` 으로 바꿀 때 `withItemAt` 경로를 등록(2회 중 2회).
+    /// 이름이 `<App>.app.incoming` 이면 둘 다 0건이고, `codesign --deep --strict -R` 재검사도 그대로 통과한다.
+    /// 남은 등록이 열기·URL 스킴을 가로채는 일은 재현되지 않았다(DB 잡동사니 수준) — 그래도 남기지 않는다.
+    static func stagedCopyName(for destination: URL) -> String { destination.lastPathComponent + ".incoming" }
+
     static func strategy(for destination: URL) -> UpdateDecision.ReplaceStrategy {
         var info = stat()
         let owner = lstat(destination.path, &info) == 0 ? info.st_uid : nil
@@ -33,7 +43,7 @@ enum UpdateReplacement {
         let staging = destination.deletingLastPathComponent()
             .appendingPathComponent(stagingPrefix(for: destination) + UUID().uuidString)
         defer { try? fm.removeItem(at: staging) }
-        let copy = staging.appendingPathComponent(destination.lastPathComponent)
+        let copy = staging.appendingPathComponent(stagedCopyName(for: destination))
         do {
             try fm.createDirectory(at: staging, withIntermediateDirectories: false)
             try fm.copyItem(at: verified.app, to: copy)
