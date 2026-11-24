@@ -71,10 +71,15 @@ enum ReleaseDecision {
         return url.path.lowercased().hasPrefix("/\(repository.lowercased())/\(kind)/")
     }
 
-    /// HTTPS and an allowed host.
+    /// HTTPS and an allowed host. An entry `*.example.com` allows every host below `example.com` (not `example.com` itself).
+    /// 2026-11-24 (#36): GitHub 가 자산 CDN 호스트 이름을 바꾸면 이미 나간 앱 전부가 내려받지 못한다 — 하위 호스트 전체를 허용할 수 있게 했다.
     static func isAllowedURL(_ url: URL, hosts: Set<String>) -> Bool {
-        guard url.scheme?.lowercased() == "https", let host = url.host?.lowercased() else { return false }
-        return hosts.contains(host)
+        guard url.scheme?.lowercased() == "https", let host = url.host?.lowercased(), !host.isEmpty else { return false }
+        if hosts.contains(host) { return true }
+        return hosts.contains { entry in
+            guard let suffix = OnePercentConfiguration.wildcardSuffix(entry) else { return false }
+            return host.hasSuffix(suffix) && host.count > suffix.count
+        }
     }
 
     /// Only the fields OnePercent needs. `nil` when `tag_name` is missing, or when the response says draft/pre-release
